@@ -68,6 +68,7 @@ ZoneGuard is a **B2B2C AI-powered parametric income protection platform** built 
 **What ZoneGuard is NOT:**
 - Not an insurance company (ZoneGuard is the technology layer; an IRDAI-licensed insurer underwrites the risk)
 - Not health, life, accident, or vehicle repair coverage — those are strictly excluded per platform design and IRDAI parametric scope
+- Not a coverage for Systemic/Catastrophic Risk: Per IRDAI solvency norms, explicitly excludes War, Terrorism, and WHO-declared Pandemics. 
 - Not a claims-filing app — riders never file a claim
 
 **What ZoneGuard IS:**
@@ -254,7 +255,7 @@ Most parametric insurance approaches trigger on a single measurable variable. Th
 │                 │  Trigger: Rainfall > 65mm/hr for ≥ 4 hrs          │
 │                 │         OR AQI > 300 for ≥ 4 continuous hrs       │
 │                 │         OR Temperature > 43°C + IMD heat advisory │
-│                 │         OR NDMA flood alert for district           │
+│                 │         OR NDMA flood alert for district          │
 ├─────────────────┼───────────────────────────────────────────────────┤
 │  SIGNAL 2       │  Mobility Layer                                   │
 │  (always live)  │  Source: OSRM (self-hosted, zero API cost)        │
@@ -828,9 +829,9 @@ The table below maps each official DEVTrails 2026 deliverable expectation to the
 |------------------------|-------------------|-------------------|
 | **Optimized onboarding for your delivery persona** | WhatsApp-native 90-second conversational flow — 3 messages, no forms, no app download. Flex Rider ID-based identity, instant policy activation. | [Section 5](#5-whatsapp-native-onboarding) |
 | **Risk profiling using AI/ML** | ZoneRisk Scorer (XGBoost, Monday recalculation), ZoneTwin digital simulation (per-zone counterfactuals + seasonal forecasting), FraudShield Isolation Forest (anomaly detection on claim patterns). | [Section 9](#9-aiml-architecture) |
-| **Policy creation with appropriate pricing structured on a Weekly basis** | Zone-specific weekly premiums ₹39–₹225 derived from XGBoost risk scoring. Monday recalculation. Forward Premium Lock (4-week, 8% discount). Payout = 75% of 7-day rolling average earnings. | [Section 6](#6-weekly-premium-model) |
+| **Policy creation with appropriate pricing structured on a Weekly basis** | Zone-specific weekly premiums ₹39–₹225 derived from XGBoost risk scoring. Monday recalculation. Forward Premium Lock (4-week). Payout = 55% of 7-day rolling average earnings. | [Section 6](#6-weekly-premium-model) |
 | **Claim triggering through relevant parametric events (loss of income triggers only)** | QuadSignal convergence across 6 defined triggers (ENV-01 through SOC-02). All triggers are income-loss-only. Health, life, accidents, and vehicle repairs are structurally excluded. | [Sections 7–8](#7-quadsignal-fusion-engine-the-core-innovation) |
-| **Payout processing via appropriate channels** | Razorpay test-mode UPI simulation. Auto-payout within 2 hours on HIGH confidence. Payout capped at 75% of 7-day earnings baseline. Zero rider action required. | [Sections 6, 14](#6-weekly-premium-model) |
+| **Payout processing via appropriate channels** | Razorpay test-mode UPI simulation. Auto-payout within 2 hours on HIGH confidence. Payout capped at 55% of 7-day earnings baseline. Zero rider action required. | [Sections 6, 14](#6-weekly-premium-model) |
 | **Analytics dashboard showing relevant metrics** | Rider Analytics Dashboard (earnings protected, payout history, zone risk, coverage card) + Insurer Admin Analytics Dashboard (zone risk heatmaps, loss ratios, QuadSignal log, disruption alerts, FraudShield queue). | [Section 17 — Phase 3](#17-development-roadmap-6-weeks) |
 
 ---
