@@ -6,6 +6,9 @@ Uses historical baselines to answer:
 
 Returns (p10, p50, p90) expected inactivity percentiles for grounding
 fraud checks and claim validation.
+
+Phase 3 Update: Added Predictive Hedge Bot logic for Sunday-night 
+disruption forecasting.
 """
 
 import random
@@ -118,3 +121,24 @@ def _interpret(expected_pct: float, rainfall: float, baseline: dict) -> str:
             f"At {rainfall:.0f}mm/hr rainfall, only {expected_pct:.0f}% rider inactivity "
             f"expected historically. Current conditions are within normal range."
         )
+
+
+def get_predictive_hedge_opportunity(zone_id: str) -> dict:
+    """
+    Phase 3: Sunday-night predictive nudge logic.
+    Analyzes upcoming 72-hour forecast trends to allow riders to 'lock' 
+    earnings protection before a high-probability disruption.
+    """
+    # Simulate high-confidence predictive forecast for demo purposes
+    # In production, this would pull from a Monday-recalc Prophet/XGB model.
+    prob = random.uniform(0.68, 0.92) 
+    
+    return {
+        "zone_id": zone_id,
+        "disruption_probability": round(prob, 2),
+        "hedge_recommended": prob > 0.6,
+        "lock_premium_multiplier": 0.85,  # 15% discount for locking early
+        "payout_guarantee_multiplier": 1.1, # 10% bonus for pre-emptive hedging
+        "message": f"Phase 3 Predictive Alert: {zone_id} has a {int(prob*100)}% flood risk this Wednesday. Lock earnings now?",
+        "timestamp": "2026-03-22T21:00:00Z"
+    }
