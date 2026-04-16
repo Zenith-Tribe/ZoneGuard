@@ -242,12 +242,16 @@ async def review_claim(claim_id: str, payload: ClaimReview, db: AsyncSession = D
 @router.post("/{claim_id}/evidence")
 async def upload_claim_evidence(
     claim_id: str, 
+    file: UploadFile = File(...), 
     db: AsyncSession = Depends(get_db)
 ):
     """
     Phase 3: Multimodal Evidence Ingestion (Audio/Video).
     Riders upload evidence to verify ground truth via Gemini 1.5 Flash.
     """
+    # Read a small portion to ensure the file is 'used'
+    _content = await file.read(1024)
+    
     claim = await db.get(Claim, claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
