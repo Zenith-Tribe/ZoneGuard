@@ -125,7 +125,10 @@ def _interpret(expected_pct: float, rainfall: float, baseline: dict) -> str:
 
 def get_predictive_hedge_opportunity(zone_id: str) -> dict:
     """Phase 3: Sunday-night predictive nudge logic."""
-    # FIX: Floor lowered to 0.1 so the "False" path can be tested
+    if zone_id not in ZONE_BASELINES:
+        return {"error": "Invalid zone"}
+
+    # Fix: Range starts at 0.1 so 'False' path can trigger
     prob = random.uniform(0.1, 0.95) 
 
     return {
@@ -134,6 +137,6 @@ def get_predictive_hedge_opportunity(zone_id: str) -> dict:
         "hedge_recommended": prob > 0.6,
         "lock_premium_multiplier": 0.85,
         "payout_guarantee_multiplier": 1.1,
-        "message": f"Phase 3 Alert: Predicted disruption risk in {zone_id} is high. Lock earnings protection now?",
-        "timestamp": datetime.now(timezone.utc).isoformat() # FIX: Dynamic timestamp
+        "message": f"Phase 3 Alert: High disruption risk in {zone_id}. Lock earnings now?",
+        "timestamp": datetime.now(timezone.utc).isoformat() # Fix: Real timestamp
     }
