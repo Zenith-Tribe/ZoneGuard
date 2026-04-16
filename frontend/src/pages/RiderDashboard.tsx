@@ -24,8 +24,8 @@ export default function RiderDashboard() {
   const [loading, setLoading] = useState(true)
   const { fetchNotifications } = useNotifications()
 
-  // Phase 3: Simulated Sunday-night condition for Hedge Bot
-  const isSundayNight = true; 
+// Phase 3: Display banner on Sundays (0) or if demo mode is active
+const isSundayNight = new Date().getDay() === 0 || window.location.search.includes('demo=true'); 
 
   useEffect(() => {
     const storedRiderId = localStorage.getItem('zoneguard_rider_id') || 'AMZFLEX-BLR-04821'
