@@ -6,7 +6,7 @@ from models.rider import Rider
 from models.zone import Zone
 from models.claim import Claim
 from models.payout import Payout
-from schemas.rider import RiderRegister, RiderResponse, RiderKYC
+from schemas.rider import RiderRegister, RiderResponse, RiderKYC, EShramVerifyRequest
 from schemas.claim import ClaimResponse
 from schemas.payout import PayoutResponse
 from ml.zone_risk_scorer import calculate_zone_premium
@@ -69,6 +69,7 @@ async def register_rider(payload: RiderRegister, db: AsyncSession = Depends(get_
         zone_id=payload.zone_id,
         weekly_earnings_baseline=payload.weekly_earnings,
         upi_id=payload.upi_id,
+        eshram_id=payload.eshram_id,
     )
     db.add(rider)
 
@@ -159,3 +160,38 @@ async def update_kyc(rider_id: str, payload: RiderKYC, db: AsyncSession = Depend
     await db.commit()
 
     return {"status": "kyc_verified", "rider_id": rider_id}
+
+
+@router.post("/{rider_id}/verify-eshram")
+async def verify_eshram(
+    rider_id: str, payload: EShramVerifyRequest, db: AsyncSession = Depends(get_db),
+):
+    """Verify rider via e-Shram portal (simulated)."""
+    rider = await db.get(Rider, rider_id)
+    if not rider:
+        raise HTTPException(status_code=404, detail="Rider not found")
+
+    from integrations.eshram_sim import verify_eshram_worker, check_income_proxy
+
+    verification = await verify_eshram_worker(
+        eshram_id=payload.eshram_id,
+        rider_name=rider.name,
+        phone=rider.phone or "",
+    )
+
+    if verification["verified"]:
+        rider.eshram_id = payload.eshram_id
+        rider.eshram_verified = True
+        rider.kyc_verified = True
+
+        # Cross-reference income if rider has earnings baseline
+        if rider.weekly_earnings_baseline > 0:
+            income_check = await check_income_proxy(
+                eshram_id=payload.eshram_id,
+                declared_weekly_earnings=rider.weekly_earnings_baseline,
+            )
+            verification["income_proxy"] = income_check
+
+        await db.commit()
+
+    return verification

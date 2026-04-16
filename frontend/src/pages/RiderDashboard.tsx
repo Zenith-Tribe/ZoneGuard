@@ -13,7 +13,7 @@ import type { PolicyData, ZoneSignalData, RawApiZone, RawApiPayout } from '../ty
 
 export default function RiderDashboard() {
   const navigate = useNavigate()
-  const [rider, setRider] = useState<typeof RIDER>(RIDER)
+  const [rider, setRider] = useState<typeof RIDER & { eshramVerified?: boolean }>(RIDER)
   const [policy, setPolicy] = useState<PolicyData | null>(null)
   const [payouts, setPayouts] = useState(PAYOUTS)
   const [signalData, setSignalData] = useState<ZoneSignalData | null>(null)
@@ -30,7 +30,7 @@ export default function RiderDashboard() {
         const r = await getRider(storedRiderId)
         const zoneId = r.zone_id || 'hsr'
         setCurrentZoneId(zoneId)
-        setRider({ ...RIDER, name: r.name, riderId: r.id, zone: ZONES[0], weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks })
+        setRider({ ...RIDER, name: r.name, riderId: r.id, zone: ZONES[0], weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks, eshramVerified: r.eshram_verified })
 
         const policies = await getPolicies(r.id)
         if (policies.length > 0) {
@@ -88,6 +88,9 @@ export default function RiderDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <NotificationBell />
+          {rider.eshramVerified && (
+            <span className="bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">e-Shram Verified</span>
+          )}
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-emerald-700 text-xs font-semibold">Covered</span>

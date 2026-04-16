@@ -14,5 +14,7 @@ class Rider(Base):
     tenure_weeks = Column(Integer, default=0)
     kyc_verified = Column(Boolean, default=False)
     upi_id = Column(String, nullable=True)
+    eshram_id = Column(String, nullable=True)
+    eshram_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -405,6 +405,108 @@ async def loss_ratio_trend(db: AsyncSession = Depends(get_db)):
     return list(reversed(trend))
 
 
+# ── FraudShield v2 — Federated Learning ─────────────────────────────
+
+@router.post("/fraudshield/train")
+async def train_federated_model(db: AsyncSession = Depends(get_db)):
+    """Run federated learning training across city-level clients."""
+    from ml.federated.client import FederatedClient
+    from ml.federated.server import FederatedServer, generate_synthetic_training_data
+
+    # Get zone IDs for client partitioning
+    zones_result = await db.execute(select(Zone.id))
+    zone_ids = [z[0] for z in zones_result.all()]
+
+    # Partition zones into 3 city clusters
+    city_clusters = {
+        "bengaluru_north": zone_ids[:len(zone_ids)//3] or zone_ids[:1],
+        "bengaluru_central": zone_ids[len(zone_ids)//3:2*len(zone_ids)//3] or zone_ids[:1],
+        "bengaluru_south": zone_ids[2*len(zone_ids)//3:] or zone_ids[:1],
+    }
+
+    server = FederatedServer(num_rounds=5)
+
+    for city_id, city_zones in city_clusters.items():
+        client = FederatedClient(city_id=city_id, zone_ids=city_zones)
+        # Generate synthetic training data for each city
+        training_data = []
+        for z_id in city_zones:
+            training_data.extend(generate_synthetic_training_data(z_id, num_samples=50))
+        client.train_local_model(training_data)
+        server.register_client(client)
+
+    # Run federated training
+    result = server.run_full_training()
+
+    # Store trained weights in module-level registry for v2 scoring
+    from ml.fraud_shield import set_federated_weights
+    set_federated_weights(result["final_weights"])
+
+    return result
+
+
+@router.get("/fraudshield/status")
+async def get_federated_status():
+    """Get FraudShield v2 federated model status."""
+    return {
+        "model_version": "v2_federated",
+        "framework": "Flower-inspired (simulated)",
+        "aggregation": "FedAvg",
+        "features": 8,
+        "description": "Privacy-preserving federated anomaly detection. "
+                       "Raw rider data never leaves city cluster — only model gradients are shared.",
+        "dpdp_compliant": True,
+    }
+
+
+# ── Temporal Clustering (Ring Detection) ─────────────────────────────
+
+@router.get("/fraud/temporal-analysis/{zone_id}")
+async def temporal_analysis(zone_id: str, db: AsyncSession = Depends(get_db)):
+    """Run temporal clustering analysis on recent claims for a zone."""
+    from ml.temporal_clustering import analyze_temporal_clustering, detect_collusion_rings
+
+    zone = await db.get(Zone, zone_id)
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+
+    # Get recent claims for zone
+    result = await db.execute(
+        select(Claim)
+        .where(Claim.zone_id == zone_id)
+        .order_by(Claim.created_at.desc())
+        .limit(100)
+    )
+    claims = result.scalars().all()
+
+    if not claims:
+        return {
+            "zone_id": zone_id,
+            "zone_name": zone.name,
+            "total_claims": 0,
+            "clustering_analysis": None,
+            "ring_detection": None,
+            "message": "No claims found for analysis",
+        }
+
+    timestamps = [c.created_at for c in claims]
+    clustering = analyze_temporal_clustering(timestamps, zone_id)
+
+    claims_with_riders = [
+        {"rider_id": c.rider_id, "timestamp": c.created_at, "zone_id": c.zone_id}
+        for c in claims
+    ]
+    rings = detect_collusion_rings(claims_with_riders)
+
+    return {
+        "zone_id": zone_id,
+        "zone_name": zone.name,
+        "total_claims": len(claims),
+        "clustering_analysis": clustering,
+        "ring_detection": rings,
+    }
+
+
 @router.get("/analytics/signal-history/{zone_id}")
 async def signal_history(
     zone_id: str,

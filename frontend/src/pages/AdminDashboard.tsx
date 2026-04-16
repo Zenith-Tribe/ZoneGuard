@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ZONES, KPIS, CLAIMS_QUEUE } from '../data/mock'
-import { getZones, getKPIs, getAdminClaims, reviewClaim, getZoneSignals, getClaimAuditReport } from '../services/api'
+import { getZones, getKPIs, getAdminClaims, reviewClaim, getZoneSignals, getClaimAuditReport, trainFederatedModel, getTemporalAnalysis } from '../services/api'
 import KPIStrip from '../components/Admin/KPIStrip'
 import QuadSignalPanel from '../components/Admin/QuadSignalPanel'
 import BengaluruZoneMap from '../components/Map/BengaluruZoneMap'
@@ -27,6 +27,10 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [claimsLoading, setClaimsLoading] = useState(true)
   const [auditReports, setAuditReports] = useState<Record<string, string>>({})
+  const [flTraining, setFlTraining] = useState(false)
+  const [flResult, setFlResult] = useState<Record<string, unknown> | null>(null)
+  const [temporalData, setTemporalData] = useState<Record<string, unknown> | null>(null)
+  const [temporalLoading, setTemporalLoading] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -398,6 +402,119 @@ export default function AdminDashboard() {
               )
             })}
           </div>
+        </div>
+
+        {/* FraudShield v2 — Federated Learning */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-700 p-4 sm:p-6" data-tour="fraudshield-v2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-white font-bold text-base flex items-center gap-2">
+                FraudShield v2 — Federated Learning
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-semibold">DPDP Compliant</span>
+              </h2>
+              <p className="text-slate-400 text-xs mt-1">Privacy-preserving anomaly detection — raw data never leaves city cluster</p>
+            </div>
+            <button
+              onClick={async () => {
+                setFlTraining(true)
+                try {
+                  const res = await trainFederatedModel()
+                  setFlResult(res as Record<string, unknown>)
+                } catch { setFlResult({ error: 'Training unavailable — backend not connected' }) }
+                setFlTraining(false)
+              }}
+              disabled={flTraining}
+              className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+            >
+              {flTraining ? 'Training...' : 'Run Federated Training'}
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            {[
+              { label: 'Aggregation', value: 'FedAvg' },
+              { label: 'City Clients', value: '3' },
+              { label: 'Features', value: '8' },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-slate-800 rounded-lg p-3 text-center">
+                <p className="text-slate-400 text-[10px] uppercase tracking-wide">{label}</p>
+                <p className="text-white font-bold text-lg">{value}</p>
+              </div>
+            ))}
+          </div>
+          {flResult && (
+            <div className="bg-slate-800 rounded-lg p-3">
+              <p className="text-emerald-400 text-xs font-semibold mb-1">
+                {(flResult as Record<string, unknown>).error ? '⚠ ' + String((flResult as Record<string, unknown>).error) : `✓ Training complete — ${(flResult as Record<string, unknown>).rounds_completed || 5} rounds`}
+              </p>
+              {!(flResult as Record<string, unknown>).error && (
+                <p className="text-slate-400 text-xs">
+                  Convergence: {(() => { const ch = (flResult as Record<string, unknown>).convergence_history as number[] | undefined; return ch?.length ? ch[ch.length - 1].toFixed(6) : 'N/A' })()} · Model gradients aggregated across 3 city clusters
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Temporal Clustering — Ring Detection */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-700 p-4 sm:p-6" data-tour="temporal-clustering">
+          <h2 className="text-white font-bold text-base mb-1">Temporal Clustering — Ring Detection</h2>
+          <p className="text-slate-400 text-xs mb-4">Analyze claim timestamp graphs per zone. Genuine disruptions show Poisson-distributed patterns; coordinated attacks show dense temporal spikes.</p>
+          <div className="flex gap-2 mb-3">
+            <select
+              className="bg-slate-800 border border-slate-600 text-slate-300 rounded-lg px-3 py-2 text-xs flex-1"
+              defaultValue=""
+              onChange={async (e) => {
+                const zid = e.target.value
+                if (!zid) return
+                setTemporalLoading(true)
+                try {
+                  const res = await getTemporalAnalysis(zid)
+                  setTemporalData(res as Record<string, unknown>)
+                } catch { setTemporalData({ error: 'Analysis unavailable' }) }
+                setTemporalLoading(false)
+              }}
+            >
+              <option value="" disabled>Select zone for analysis...</option>
+              {normalizedZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+          </div>
+          {temporalLoading && <p className="text-slate-400 text-xs animate-pulse">Analyzing claim timestamps...</p>}
+          {temporalData && !temporalLoading && (
+            <div className="bg-slate-800 rounded-lg p-3">
+              {(temporalData as Record<string, unknown>).error ? (
+                <p className="text-amber-400 text-xs">⚠ {String((temporalData as Record<string, unknown>).error)}</p>
+              ) : (temporalData as Record<string, unknown>).message ? (
+                <p className="text-slate-400 text-xs">{String((temporalData as Record<string, unknown>).message)}</p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-white text-sm font-bold">{String((temporalData as Record<string, unknown>).zone_name)}</span>
+                    <span className="text-slate-400 text-xs">{String((temporalData as Record<string, unknown>).total_claims)} claims analyzed</span>
+                  </div>
+                  {(temporalData as Record<string, unknown>).clustering_analysis && (() => {
+                    const ca = (temporalData as Record<string, unknown>).clustering_analysis as Record<string, unknown>
+                    const isSuspicious = ca.is_suspicious as boolean
+                    return (
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-slate-400 text-[10px] uppercase">Clustering Coefficient</p>
+                          <p className={`font-bold text-lg ${isSuspicious ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {((ca.clustering_coefficient as number) * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-[10px] uppercase">Status</p>
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${isSuspicious ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                            {String(ca.recommendation).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="text-center pb-4">

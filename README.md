@@ -106,7 +106,7 @@ Open **http://localhost:5173** → ZoneGuard is live.
 - [x] **API rate limiting** — slowapi 100 req/min (optional dependency)
 - [x] **Zone baselines** — seeded from ZoneTwin historical data
 - [x] **Structured logging** — all integrations log warnings on fallback
-- [x] **85 backend tests** — pytest: signal fusion, fraud detection, exclusion engine, zone risk, zone twin, claim pipeline, pagination
+- [x] **123 backend tests** — pytest: signal fusion, fraud detection, exclusion engine, zone risk, zone twin, claim pipeline, pagination, forward lock, temporal clustering, federated learning, e-Shram KYC
 - [x] **24 frontend tests** — vitest: chat responses, API service layer
 
 ### Key API Endpoints
@@ -883,13 +883,13 @@ The hardest part of any insurance business is distribution. ZoneGuard's B2B2C mo
 ### Phase 3 [April 5–17]: Scale & Optimise ← **Final Submission Package**
 
 - [x] FraudShield v1 heuristic — velocity, timing, GPS distance, tenure scoring
-- [ ] FraudShield v2 — Federated Learning upgrade (Flower framework) — Phase 3
-- [ ] Temporal clustering analysis for collusion ring detection — Phase 3
+- [x] FraudShield v2 — Federated Learning simulation (Flower-inspired FedAvg, 3 city clients, privacy-preserving)
+- [x] Temporal clustering analysis for collusion ring detection (Poisson goodness-of-fit, graph-based ring identification)
 - [x] **Rider Analytics Dashboard** — earnings protected, payout history, active coverage card, zone risk level, disruption event feed
 - [x] **Insurer Admin Analytics Dashboard** — KPI strip, ClaimsChart, PayoutChart, LossRatioWidget, QuadSignal live feed, FraudShield queue
 - [x] Disruption simulation engine — 4 scenarios (flash_flood, severe_aqi, transport_strike, heat_wave)
-- [ ] Forward Premium Lock feature (4-week commitment, 8% discount) — Phase 3
-- [ ] e-Shram KYC integration — Phase 3
+- [x] Forward Premium Lock feature (4-week commitment, 8% discount) — activation endpoint + frontend toggle
+- [x] e-Shram KYC integration — simulated portal verification, income proxy validation, deduplication check
 - [ ] **Final pitch deck (PDF)** ← Must create for submission
 - [ ] **5-minute demo video** ← Must record for submission
 

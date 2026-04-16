@@ -196,6 +196,40 @@ async def renew_policy(policy_id: str, db: AsyncSession = Depends(get_db)):
     return {"old_policy_id": policy_id, "new_policy": PolicyResponse.model_validate(new_policy)}
 
 
+@router.post("/{policy_id}/forward-lock")
+async def activate_forward_lock(policy_id: str, db: AsyncSession = Depends(get_db)):
+    """Activate Forward Premium Lock: 4-week commitment with 8% discount."""
+    policy = await db.get(Policy, policy_id)
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if policy.status != "active":
+        raise HTTPException(status_code=400, detail="Only active policies can be forward-locked")
+    if policy.is_forward_locked:
+        raise HTTPException(status_code=400, detail="Policy already forward-locked")
+
+    original_premium = policy.weekly_premium
+    discounted_premium = round(original_premium * 0.92)
+    savings_per_week = original_premium - discounted_premium
+
+    policy.is_forward_locked = True
+    policy.forward_lock_weeks = 4
+    policy.weekly_premium = discounted_premium
+
+    await db.commit()
+    await db.refresh(policy)
+
+    return {
+        "policy_id": policy.id,
+        "is_forward_locked": True,
+        "weeks_remaining": policy.forward_lock_weeks,
+        "original_premium": original_premium,
+        "weekly_premium": discounted_premium,
+        "discount_pct": 8,
+        "savings_per_week": savings_per_week,
+        "total_savings": savings_per_week * 4,
+    }
+
+
 @router.post("/{policy_id}/cancel")
 async def cancel_policy(policy_id: str, db: AsyncSession = Depends(get_db)):
     policy = await db.get(Policy, policy_id)

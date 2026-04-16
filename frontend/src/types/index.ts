@@ -165,6 +165,8 @@ export interface RawRider {
   phone?: string;
   kyc_verified?: boolean;
   upi_id?: string;
+  eshram_id?: string;
+  eshram_verified?: boolean;
 }
 
 export interface RawApiZone {

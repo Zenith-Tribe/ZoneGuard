@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/v1/premium", tags=["premium"])
 async def calculate_premium(
     zone_id: str = Query(...),
     rider_id: str = Query(None),
+    forward_lock: bool = Query(False, description="Show Forward Premium Lock discount"),
     db: AsyncSession = Depends(get_db),
 ):
     """Dynamic premium calculation with full factor breakdown."""
@@ -41,12 +42,25 @@ async def calculate_premium(
         total_zone_riders=zone.active_riders or 100,
     )
 
-    return {
+    response = {
         "zone_id": zone_id,
         "zone_name": zone.name,
         "rider_id": rider_id,
         **result,
     }
+
+    if forward_lock:
+        regular = result.get("premium", 0)
+        locked = round(regular * 0.92)
+        response["forward_lock_discount"] = {
+            "regular_premium": regular,
+            "locked_premium": locked,
+            "savings_per_week": regular - locked,
+            "total_4_week_savings": (regular - locked) * 4,
+            "discount_pct": 8,
+        }
+
+    return response
 
 
 @router.get("/history", response_model=list[PremiumPaymentResponse])

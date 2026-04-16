@@ -17,7 +17,10 @@ Thresholds:
 """
 
 import numpy as np
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_fraud_score(
@@ -29,6 +32,7 @@ def calculate_fraud_score(
     distance_from_centroid_km: float,
     s1_value: float,
     days_since_policy_start: int,
+    temporal_clustering_coefficient: float = 0.0,
 ) -> dict:
     """
     Rule-based fraud scoring that mimics Isolation Forest behavior.
@@ -80,6 +84,13 @@ def calculate_fraud_score(
         score += 0.10
         anomaly_signals.append(f"rider tenure only {tenure_weeks} weeks")
 
+    # Temporal clustering — possible coordinated claims
+    if temporal_clustering_coefficient > 0.5:
+        score += 0.20
+        anomaly_signals.append(
+            f"temporal clustering coefficient {temporal_clustering_coefficient:.2f} — possible coordinated claims"
+        )
+
     score = min(1.0, score)
 
     if score > 0.85:
@@ -93,6 +104,7 @@ def calculate_fraud_score(
         "score": round(score, 3),
         "risk_level": risk_level,
         "anomaly_signals": anomaly_signals,
+        "model_version": "v1_heuristic",
         "features": {
             "claim_hour": claim_hour,
             "tenure_weeks": tenure_weeks,
@@ -104,3 +116,67 @@ def calculate_fraud_score(
             "days_since_policy_start": days_since_policy_start,
         },
     }
+
+
+# Module-level registry for trained federated model weights.
+# Populated by POST /admin/fraudshield/train; read by calculate_fraud_score_v2.
+_federated_global_weights: dict | None = None
+
+
+def set_federated_weights(weights: dict) -> None:
+    """Store trained global weights for v2 scoring."""
+    global _federated_global_weights
+    _federated_global_weights = weights
+
+
+def calculate_fraud_score_v2(
+    claim_hour: int,
+    tenure_weeks: int,
+    zone_inactivity_pct: float,
+    claim_velocity_7d: int,
+    zone_claim_rate_deviation: float,
+    distance_from_centroid_km: float,
+    s1_value: float,
+    days_since_policy_start: int,
+    temporal_clustering_coefficient: float = 0.0,
+) -> dict:
+    """
+    FraudShield v2 — Federated Learning anomaly detection.
+    Uses the federated model when trained weights are available, falls back to v1 heuristic.
+    """
+    if _federated_global_weights is not None:
+        try:
+            from ml.federated.model import FederatedAnomalyModel
+
+            model = FederatedAnomalyModel()
+            model.set_weights(_federated_global_weights)
+            result = model.predict({
+                "claim_hour": claim_hour,
+                "tenure_weeks": tenure_weeks,
+                "zone_inactivity_pct": zone_inactivity_pct,
+                "claim_velocity_7d": claim_velocity_7d,
+                "zone_claim_rate_deviation": zone_claim_rate_deviation,
+                "distance_from_centroid_km": distance_from_centroid_km,
+                "s1_value": s1_value,
+                "days_since_policy_start": days_since_policy_start,
+            })
+            result["model_version"] = "v2_federated"
+            result["federated_metadata"] = {"model_type": "FederatedAnomalyModel", "aggregation": "FedAvg"}
+            return result
+        except (ImportError, Exception) as e:
+            logger.warning(f"FraudShield v2 prediction failed ({e}), falling back to v1")
+
+    # Fallback to v1
+    result = calculate_fraud_score(
+        claim_hour=claim_hour,
+        tenure_weeks=tenure_weeks,
+        zone_inactivity_pct=zone_inactivity_pct,
+        claim_velocity_7d=claim_velocity_7d,
+        zone_claim_rate_deviation=zone_claim_rate_deviation,
+        distance_from_centroid_km=distance_from_centroid_km,
+        s1_value=s1_value,
+        days_since_policy_start=days_since_policy_start,
+        temporal_clustering_coefficient=temporal_clustering_coefficient,
+    )
+    result["model_version"] = "v1_heuristic_fallback"
+    return result

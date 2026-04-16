@@ -10,6 +10,7 @@ class RiderRegister(BaseModel):
     zone_id: str
     weekly_earnings: float
     upi_id: Optional[str] = None
+    eshram_id: Optional[str] = None
 
 
 class RiderResponse(BaseModel):
@@ -21,6 +22,8 @@ class RiderResponse(BaseModel):
     tenure_weeks: int
     kyc_verified: bool
     upi_id: Optional[str]
+    eshram_id: Optional[str] = None
+    eshram_verified: bool = False
     created_at: datetime
 
     class Config:
@@ -30,3 +33,19 @@ class RiderResponse(BaseModel):
 class RiderKYC(BaseModel):
     upi_id: str
     phone: str
+
+
+class EShramVerifyRequest(BaseModel):
+    eshram_id: str
+
+
+class EShramVerifyResponse(BaseModel):
+    status: str
+    eshram_id: str
+    verified: bool
+    worker_name: Optional[str] = None
+    worker_category: Optional[str] = None
+    income_band: Optional[str] = None
+    deduplication_check: Optional[dict] = None
+    message: Optional[str] = None
+    source: str = "simulated_eshram_portal"

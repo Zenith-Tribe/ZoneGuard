@@ -36,6 +36,7 @@ export interface RegisterRiderPayload {
   tenure_weeks?: number;
   kyc_verified?: boolean;
   upi_id?: string;
+  eshram_id?: string;
 }
 
 export interface CreatePolicyPayload {
@@ -43,6 +44,8 @@ export interface CreatePolicyPayload {
   zone_id: string;
   weekly_premium?: number;
   max_payout?: number;
+  is_forward_locked?: boolean;
+  forward_lock_weeks?: number;
 }
 
 export interface ClaimsParams {
@@ -171,6 +174,37 @@ export const getPayoutStats = () =>
 export const retryPayout = (payoutId: string) =>
   fetchAPI<{ payout_id: string; status: string; retry_count: number; upi_ref: string }>(
     `/api/v1/payouts/${payoutId}/retry`, { method: 'POST' }
+  )
+
+// Forward Premium Lock
+export const activateForwardLock = (policyId: string) =>
+  fetchAPI<{ policy_id: string; is_forward_locked: boolean; weeks_remaining: number; original_premium: number; weekly_premium: number; discount_pct: number; savings_per_week: number; total_savings: number }>(
+    `/api/v1/policies/${policyId}/forward-lock`, { method: 'POST' }
+  )
+
+// e-Shram KYC
+export const verifyEShram = (riderId: string, eshramId: string) =>
+  fetchAPI<{ status: string; eshram_id: string; verified: boolean; worker_name?: string; worker_category?: string; income_band?: string; message?: string }>(
+    `/api/v1/riders/${riderId}/verify-eshram`, {
+      method: 'POST',
+      body: JSON.stringify({ eshram_id: eshramId }),
+    }
+  )
+
+// FraudShield v2 — Federated Learning
+export const trainFederatedModel = () =>
+  fetchAPI<{ rounds_completed: number; convergence_history: number[]; per_client_stats: Record<string, unknown> }>(
+    '/api/v1/admin/fraudshield/train', { method: 'POST' }
+  )
+export const getFederatedStatus = () =>
+  fetchAPI<{ model_version: string; framework: string; aggregation: string; features: number; dpdp_compliant: boolean }>(
+    '/api/v1/admin/fraudshield/status'
+  )
+
+// Temporal Clustering
+export const getTemporalAnalysis = (zoneId: string) =>
+  fetchAPI<{ zone_id: string; zone_name: string; total_claims: number; clustering_analysis: Record<string, unknown> | null; ring_detection: Record<string, unknown> | null }>(
+    `/api/v1/admin/fraud/temporal-analysis/${zoneId}`
   )
 
 // Re-export Zone for consumers that used the old `getZones` → Zone[] pattern

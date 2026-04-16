@@ -43,6 +43,8 @@ export default function OnboardingPage() {
   const [premiumData, setPremiumData] = useState<PremiumBreakdown | null>(null)
   const [loading, setLoading] = useState(false)
   const [apiAvailable, setApiAvailable] = useState(true)
+  const [forwardLock, setForwardLock] = useState(false)
+  const [eshramId, setEshramId] = useState('')
 
   useEffect(() => {
     getZones()
@@ -99,8 +101,12 @@ export default function OnboardingPage() {
         await registerRider({
           rider_id: riderId, name: riderName || 'Rider',
           zone_id: selectedZoneId, weekly_earnings: earningsNum,
+          ...(eshramId.length === 12 ? { eshram_id: eshramId } : {}),
         })
-        await createPolicy({ rider_id: riderId, zone_id: selectedZoneId })
+        await createPolicy({
+          rider_id: riderId, zone_id: selectedZoneId,
+          ...(forwardLock ? { is_forward_locked: true, forward_lock_weeks: 4 } : {}),
+        })
       }
       localStorage.setItem('zoneguard_rider_id', riderId)
       setStep(4)
@@ -148,7 +154,18 @@ export default function OnboardingPage() {
               <input type="text" value={riderId} onChange={e => setRiderId(e.target.value.toUpperCase())} placeholder="AMZFLEX-BLR-XXXXX"
                 className="w-full border border-amber-200 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono text-sm mb-3" />
               <input type="text" value={riderName} onChange={e => setRiderName(e.target.value)} placeholder="Your Name"
-                className="w-full border border-amber-200 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm" />
+                className="w-full border border-amber-200 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm mb-3" />
+              <input type="text" value={eshramId} onChange={e => setEshramId(e.target.value.replace(/\D/g, '').slice(0, 12))} placeholder="e-Shram UAN (optional, 12 digits)"
+                className="w-full border border-amber-200 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-mono" />
+              {eshramId.length > 0 && eshramId.length < 12 && (
+                <p className="text-amber-500 text-xs mt-1">{12 - eshramId.length} more digits needed</p>
+              )}
+              {eshramId.length === 12 && (
+                <p className="text-emerald-600 text-xs mt-1 flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 bg-emerald-100 rounded-full text-center leading-3 text-emerald-600 text-[8px] font-bold">&#10003;</span>
+                  Valid e-Shram UAN format — will verify on confirmation
+                </p>
+              )}
               <button onClick={() => riderId.trim().length >= 5 && setStep(2)} disabled={riderId.trim().length < 5}
                 className="w-full mt-5 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-200 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors">
                 Continue
@@ -235,6 +252,38 @@ export default function OnboardingPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Forward Premium Lock toggle */}
+              <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-stone-800 font-bold text-sm flex items-center gap-2">
+                      Forward Premium Lock
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Save 8%</span>
+                    </h3>
+                    <p className="text-stone-500 text-xs mt-1">Commit to 4 weeks upfront and save ₹{Math.round((selectedZone.weeklyPremium || 0) * 0.08)}/week</p>
+                  </div>
+                  <button
+                    onClick={() => setForwardLock(!forwardLock)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${forwardLock ? 'bg-emerald-500' : 'bg-stone-200'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${forwardLock ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                {forwardLock && (
+                  <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-stone-500">Regular</span>
+                      <span className="text-stone-400 line-through">₹{selectedZone.weeklyPremium}/wk</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold">
+                      <span className="text-emerald-700">Locked price</span>
+                      <span className="text-emerald-700">₹{Math.round((selectedZone.weeklyPremium || 0) * 0.92)}/wk</span>
+                    </div>
+                    <p className="text-emerald-600 text-xs mt-1">Total savings: ₹{Math.round((selectedZone.weeklyPremium || 0) * 0.08) * 4} over 4 weeks</p>
+                  </div>
+                )}
               </div>
 
               {/* Premium Breakdown (if API available) */}

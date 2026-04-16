@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getPolicies, getPolicyExclusions, calculatePremium, renewPolicy, cancelPolicy } from '../services/api'
+import { getPolicies, getPolicyExclusions, calculatePremium, renewPolicy, cancelPolicy, activateForwardLock } from '../services/api'
 import PolicyCard from '../components/Policy/PolicyCard'
 import ExclusionsList from '../components/Policy/ExclusionsList'
 import PremiumBreakdown from '../components/Policy/PremiumBreakdown'
@@ -26,6 +26,7 @@ export default function PolicyPage() {
   const [premiumData, setPremiumData] = useState<PremiumBreakdownType | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [lockResult, setLockResult] = useState<{ savings_per_week: number; total_savings: number } | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -170,7 +171,36 @@ export default function PolicyPage() {
               <span className="text-emerald-600 font-medium">₹{Math.round((policy?.weekly_premium || 49) * 0.08 * 4)}</span>
             </div>
           </div>
-          <p className="text-stone-400 text-xs">Actuarial innovation: predictable premium pool reduces loss ratio volatility</p>
+          {policy?.is_forward_locked ? (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">
+                <span>&#10003;</span> Locked — {policy.forward_lock_weeks} weeks remaining
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!policy) return
+                setActionLoading(true)
+                try {
+                  const res = await activateForwardLock(policy.id)
+                  setLockResult({ savings_per_week: res.savings_per_week, total_savings: res.total_savings })
+                  setPolicy({ ...policy, is_forward_locked: true, forward_lock_weeks: 4, weekly_premium: res.weekly_premium })
+                } catch { /* ignore */ }
+                setActionLoading(false)
+              }}
+              disabled={actionLoading || policy?.status !== 'active'}
+              className="mt-2 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-300 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+            >
+              {actionLoading ? 'Locking...' : 'Activate Forward Lock — Save 8%'}
+            </button>
+          )}
+          {lockResult && (
+            <p className="text-emerald-600 text-xs mt-2 font-medium">
+              Saved ₹{lockResult.savings_per_week}/week · ₹{lockResult.total_savings} total over 4 weeks
+            </p>
+          )}
+          <p className="text-stone-400 text-xs mt-2">Actuarial innovation: predictable premium pool reduces loss ratio volatility</p>
         </div>
 
         {/* Exclusions */}
