@@ -124,21 +124,16 @@ def _interpret(expected_pct: float, rainfall: float, baseline: dict) -> str:
 
 
 def get_predictive_hedge_opportunity(zone_id: str) -> dict:
-    """
-    Phase 3: Sunday-night predictive nudge logic.
-    Analyzes upcoming 72-hour forecast trends to allow riders to 'lock' 
-    earnings protection before a high-probability disruption.
-    """
-    # Simulate high-confidence predictive forecast for demo purposes
-    # In production, this would pull from a Monday-recalc Prophet/XGB model.
-    prob = random.uniform(0.68, 0.92) 
-    
+    """Phase 3: Sunday-night predictive nudge logic."""
+    # FIX: Floor lowered to 0.1 so the "False" path can be tested
+    prob = random.uniform(0.1, 0.95) 
+
     return {
         "zone_id": zone_id,
         "disruption_probability": round(prob, 2),
         "hedge_recommended": prob > 0.6,
-        "lock_premium_multiplier": 0.85,  # 15% discount for locking early
-        "payout_guarantee_multiplier": 1.1, # 10% bonus for pre-emptive hedging
-        "message": f"Phase 3 Predictive Alert: {zone_id} has a {int(prob*100)}% flood risk this Wednesday. Lock earnings now?",
-        "timestamp": "2026-03-22T21:00:00Z"
+        "lock_premium_multiplier": 0.85,
+        "payout_guarantee_multiplier": 1.1,
+        "message": f"Phase 3 Alert: Predicted disruption risk in {zone_id} is high. Lock earnings protection now?",
+        "timestamp": datetime.now(timezone.utc).isoformat() # FIX: Dynamic timestamp
     }
