@@ -33,6 +33,8 @@ def calculate_fraud_score(
     s1_value: float,
     days_since_policy_start: int,
     temporal_clustering_coefficient: float = 0.0,
+    vibration_entropy: float = 0.8, # Added Phase 3
+    acoustic_confidence: float = 0.0, # Added Phase 3
 ) -> dict:
     """
     Rule-based fraud scoring that mimics Isolation Forest behavior.
@@ -41,6 +43,15 @@ def calculate_fraud_score(
     """
     anomaly_signals = []
     score = 0.0
+
+    # Phase 4: Individual Behavioral Analysis (Accelerometer/Vibration)
+    if vibration_entropy < 0.3:
+        score += 0.35
+        anomaly_signals.append("Anomaly: Low Vibration Entropy (Possible GPS Simulator)")
+    
+    # Phase 4: Acoustic Verification (Signal 4 Override)
+    if acoustic_confidence > 0.8:
+        score -= 0.2 # AI confirmed rain sound
 
     # Suspicious claim timing (late night / early morning)
     if claim_hour < 6 or claim_hour > 22:
