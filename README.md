@@ -106,7 +106,7 @@ Open **http://localhost:5173** → ZoneGuard is live.
 - [x] **API rate limiting** — slowapi 100 req/min (optional dependency)
 - [x] **Zone baselines** — seeded from ZoneTwin historical data
 - [x] **Structured logging** — all integrations log warnings on fallback
-- [x] **62 backend tests** — pytest: signal fusion, fraud detection, exclusion engine, zone risk, zone twin
+- [x] **85 backend tests** — pytest: signal fusion, fraud detection, exclusion engine, zone risk, zone twin, claim pipeline, pagination
 - [x] **24 frontend tests** — vitest: chat responses, API service layer
 
 ### Key API Endpoints

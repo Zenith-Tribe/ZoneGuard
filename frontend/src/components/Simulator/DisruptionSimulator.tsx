@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { triggerSimulation } from '../../services/api'
+import { useState, useEffect } from 'react'
+import { triggerSimulation, getScenarios } from '../../services/api'
 import type { SimulationResult } from '../../types'
 
 interface Props {
@@ -7,18 +7,37 @@ interface Props {
   onSimulationTriggered?: (result: SimulationResult) => void
 }
 
-const SCENARIOS = [
+const FALLBACK_SCENARIOS = [
   { id: 'flash_flood', name: 'Flash Flood', icon: '🌊', desc: 'Heavy rainfall >82mm/hr, flooding' },
   { id: 'severe_aqi', name: 'Severe AQI', icon: '🏭', desc: 'AQI >420, hazardous air quality' },
   { id: 'transport_strike', name: 'Transport Strike', icon: '🚫', desc: 'Zone-wide transport shutdown' },
   { id: 'heat_wave', name: 'Heat Wave', icon: '🔥', desc: 'Temperature >46°C, heat advisory' },
 ]
 
+const SCENARIO_ICONS: Record<string, string> = {
+  flash_flood: '🌊', severe_aqi: '🏭', transport_strike: '🚫', heat_wave: '🔥',
+}
+
 export default function DisruptionSimulator({ zones, onSimulationTriggered }: Props) {
   const [zoneId, setZoneId] = useState(zones[0]?.id || '')
   const [scenario, setScenario] = useState('flash_flood')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
+  const [scenarios, setScenarios] = useState(FALLBACK_SCENARIOS)
+
+  useEffect(() => {
+    getScenarios()
+      .then((data) => {
+        const mapped = Object.entries(data).map(([id, s]) => ({
+          id,
+          name: s.name,
+          icon: SCENARIO_ICONS[id] || '⚡',
+          desc: s.description,
+        }))
+        if (mapped.length > 0) setScenarios(mapped)
+      })
+      .catch(() => { /* keep fallback */ })
+  }, [])
 
   const handleTrigger = async () => {
     setLoading(true)
@@ -67,7 +86,7 @@ export default function DisruptionSimulator({ zones, onSimulationTriggered }: Pr
             onChange={e => setScenario(e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
           >
-            {SCENARIOS.map(s => (
+            {scenarios.map(s => (
               <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
             ))}
           </select>
@@ -77,8 +96,8 @@ export default function DisruptionSimulator({ zones, onSimulationTriggered }: Pr
       {/* Scenario description */}
       <div className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 mb-4">
         <p className="text-slate-300 text-xs">
-          {SCENARIOS.find(s => s.id === scenario)?.icon}{' '}
-          {SCENARIOS.find(s => s.id === scenario)?.desc}
+          {scenarios.find(s => s.id === scenario)?.icon}{' '}
+          {scenarios.find(s => s.id === scenario)?.desc}
         </p>
       </div>
 

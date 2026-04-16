@@ -19,13 +19,14 @@ export default function RiderDashboard() {
   const [signalData, setSignalData] = useState<ZoneSignalData | null>(null)
   const [zones, setZones] = useState<RawApiZone[]>([])
   const [currentZoneId, setCurrentZoneId] = useState<string>('hsr')
+  const [loading, setLoading] = useState(true)
   const { fetchNotifications } = useNotifications()
 
   useEffect(() => {
+    const storedRiderId = localStorage.getItem('zoneguard_rider_id') || 'AMZFLEX-BLR-04821'
+
     const init = async () => {
       try {
-        // Try loading rider from API — use localStorage if set by onboarding, else fall back to seeded rider
-        const storedRiderId = localStorage.getItem('zoneguard_rider_id') || 'AMZFLEX-BLR-04821'
         const r = await getRider(storedRiderId)
         const zoneId = r.zone_id || 'hsr'
         setCurrentZoneId(zoneId)
@@ -50,13 +51,18 @@ export default function RiderDashboard() {
         const signals = await getZoneSignals(r.zone_id || 'hsr')
         setSignalData(signals)
 
-        // Fetch notifications for this rider
         fetchNotifications(storedRiderId)
       } catch {
-        // Fallback to mock data — QuadSignalWidget will handle its own loading state
+        // Fallback to mock data
+      } finally {
+        setLoading(false)
       }
     }
     init()
+
+    // Poll notifications every 15s for live demo updates
+    const interval = setInterval(() => fetchNotifications(storedRiderId), 15000)
+    return () => clearInterval(interval)
   }, [])
 
   const totalEarned = RAVI_WEEK.reduce((s, d) => s + d.earnings, 0)
@@ -91,7 +97,13 @@ export default function RiderDashboard() {
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         {/* Policy card (API) or Coverage card (mock) */}
-        {policy ? (
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-amber-100 p-6 animate-pulse">
+            <div className="h-4 bg-amber-100 rounded w-1/3 mb-3" />
+            <div className="h-3 bg-amber-50 rounded w-2/3 mb-2" />
+            <div className="h-3 bg-amber-50 rounded w-1/2" />
+          </div>
+        ) : policy ? (
           <PolicyCard policy={policy} zoneName={rider.zone?.name || 'HSR Layout'} />
         ) : (
           <CoverageCard zone={rider.zone} premiumPaid={rider.zone.weeklyPremium} maxPayout={rider.zone.maxWeeklyPayout} isActive={rider.coverageActive} />
