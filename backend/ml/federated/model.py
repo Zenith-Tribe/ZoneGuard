@@ -85,11 +85,14 @@ class FederatedAnomalyModel:
         # making it more useful for spotting outliers.
         cvs: dict[str, float] = {}
         for feat in self.FEATURE_NAMES:
-            mean_abs = abs(self.means[feat]) if abs(self.means[feat]) > 1e-8 else 1.0
+            # FIX: Prevent Exploding Weights by using a logical floor of 1.0 
+            # instead of 1e-8 for the mean absolute value.
+            mean_abs = max(abs(self.means[feat]), 1.0)
             cvs[feat] = self.stds[feat] / mean_abs
 
         max_cv = max(cvs.values()) if cvs else 1.0
-        max_cv = max_cv if max_cv > 1e-8 else 1.0
+        # FIX: Ensure max_cv also has a safe floor to prevent division by near-zero
+        max_cv = max(max_cv, 1.0)
 
         for feat in self.FEATURE_NAMES:
             # Normalize to [0.5, 2.0] range so no feature is zeroed out.
