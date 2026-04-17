@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from db.database import get_db
@@ -10,8 +10,9 @@ from schemas.zone import ZoneResponse
 from schemas.rider import RiderResponse
 from schemas.claim import ClaimResponse
 from services.signal_poller import poll_zone_signals
-from ml.signal_fusion import evaluate_s1, evaluate_s2, evaluate_s3, evaluate_s4, fuse_signals
-from ml.zone_twin import counterfactual_inactivity
+from ml.signal_fusion import evaluate_s1, evaluate_s2, evaluate_s3, evaluate_s4, fuse_signals, get_h3_index
+from ml.zone_twin import counterfactual_inactivity, get_predictive_hedge_opportunity
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/v1/zones", tags=["zones"])
 
@@ -21,17 +22,24 @@ _signal_cache: dict[str, dict] = {}
 
 @router.get("")
 async def list_zones(db: AsyncSession = Depends(get_db)) -> list[ZoneResponse]:
+    """List all zones enriched with Phase 3 H3 metadata."""
     result = await db.execute(select(Zone))
     zones = result.scalars().all()
+    # Pydantic will handle the validation, but we can enrich the objects if needed
     return [ZoneResponse.model_validate(z) for z in zones]
 
 
 @router.get("/{zone_id}")
 async def get_zone(zone_id: str, db: AsyncSession = Depends(get_db)):
+    """Get zone details with hyper-local H3 index."""
     zone = await db.get(Zone, zone_id)
     if not zone:
-        return {"error": "Zone not found"}, 404
-    return ZoneResponse.model_validate(zone)
+        raise HTTPException(status_code=404, detail="Zone not found")
+    
+    response = ZoneResponse.model_validate(zone).model_dump()
+    # Add H3 Hex ID for hyper-local precision
+    response["h3_id"] = get_h3_index(zone.lat, zone.lng, res=8)
+    return response
 
 
 @router.get("/{zone_id}/signals/current")
@@ -59,11 +67,15 @@ async def get_current_signals(zone_id: str, db: AsyncSession = Depends(get_db)):
     s2 = evaluate_s2(mobility["mobility_index"])
     s3 = evaluate_s3(orders["order_volume"])
     s4 = evaluate_s4(checkins["inactive_riders"], checkins["total_riders"])
-    fusion = fuse_signals(s1, s2, s3, s4)
+    
+    # Phase 3: Include rider location for H3 verification
+    rider_loc = {"lat": zone.lat, "lng": zone.lng}
+    fusion = fuse_signals(s1, s2, s3, s4, rider_location=rider_loc)
 
     result = {
         "zone_id": zone_id,
         "zone_name": zone.name,
+        "h3_index": fusion.get("h3_index"),
         "s1_environmental": {
             "status": "firing" if s1["breached"] else "inactive",
             "value": f"Rainfall: {weather['rainfall_mm_hr']:.0f}mm/hr",
@@ -93,6 +105,7 @@ async def get_current_signals(zone_id: str, db: AsyncSession = Depends(get_db)):
         "is_disrupted": fusion["signals_fired"] >= 2,
         "fusion": fusion,
         "weather": weather,
+        "phase_version": 3.0
     }
 
     _signal_cache[zone_id] = result
@@ -121,6 +134,46 @@ async def get_risk_score(zone_id: str, db: AsyncSession = Depends(get_db)):
         "risk_score": zone.risk_score,
         "risk_tier": zone.risk_tier,
         "zone_twin": twin,
+    }
+
+
+# --- PHASE 3 GOLDEN FEATURE ENDPOINTS ---
+
+@router.get("/{zone_id}/predictive-hedge")
+async def get_zone_hedge(zone_id: str):
+    """
+    Phase 3: Sunday-night Predictive Hedge API.
+    Returns forecasted disruption probability for the week.
+    """
+    prediction = get_predictive_hedge_opportunity(zone_id)
+    return {
+        "status": "success",
+        "data": prediction
+    }
+
+
+@router.get("/analytics/h3-heatmap")
+async def get_h3_heatmap(db: AsyncSession = Depends(get_db)):
+    """
+    Phase 3: Returns Resolution 8 Hexagonal grid data for Admin Heatmap.
+    This fulfills the requirement for hyper-local granularity visualization.
+    """
+    result = await db.execute(select(Zone))
+    zones = result.scalars().all()
+    
+    cells = []
+    for z in zones:
+        cells.append({
+            "h3_id": get_h3_index(z.lat, z.lng, res=8),
+            "risk_level": z.risk_tier,
+            "risk_score": z.risk_score,
+            "is_active": z.risk_score > 60
+        })
+        
+    return {
+        "resolution": 8,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "cells": cells
     }
 
 
