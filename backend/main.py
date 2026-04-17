@@ -114,21 +114,20 @@ if HAS_SLOWAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS — allow Railway and GitHub Pages origins
-cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
-# If a wildcard pattern exists, replace with ["*"] for CORSMiddleware compatibility
-if any("*" in o for o in cors_origins):
-    cors_origins = ["*"]
+# Filter out glob patterns; CORSMiddleware needs exact origins or ["*"]
+cors_origins = [
+    o.strip() for o in settings.cors_origins.split(",")
+    if o.strip() and "*" not in o.strip()
+]
+# If no explicit origins configured or env says allow all, use wildcard
+use_wildcard = not cors_origins or settings.allowed_hosts == "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_origins=["*"] if use_wildcard else cors_origins,
+    allow_credentials=not use_wildcard,  # credentials + wildcard origin is invalid per spec
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# TrustedHost — Railway proxies requests with its own Host header
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ── Session 4: AdaptPremium Admin Endpoints (Innovation 13) ───────────────────
 from fastapi import APIRouter, HTTPException, BackgroundTasks

@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
-EXPOSE 8000
+ENV PORT=8000
+EXPOSE ${PORT}
 
 # Run seed script to create tables, then start server
-CMD ["sh", "-c", "python db/seed.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD sh -c "python db/seed.py && uvicorn main:app --host 0.0.0.0 --port ${PORT}"
