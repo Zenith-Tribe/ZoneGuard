@@ -5,22 +5,24 @@
 
 > *"A flash flood doesn't wait for a claims adjuster. Neither should a delivery rider's rent."*
 
-![Phase](https://img.shields.io/badge/Phase-3%20Complete-brightgreen)
+![Phase](https://img.shields.io/badge/Phase-4%20Blockchain%20%2B%20Web3-brightgreen)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-182%20Passing-brightgreen)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI%20Python-blue)
 ![Frontend](https://img.shields.io/badge/Frontend-React%2019%20TypeScript-61dafb)
+![Blockchain](https://img.shields.io/badge/Blockchain-Hyperledger%20Fabric-2C3E50)
+![L2](https://img.shields.io/badge/L2-Polygon%20TemporalSig-7B3FE4)
 ![ML](https://img.shields.io/badge/ML-QuadSignal%20Fusion-purple)
 ![LLM](https://img.shields.io/badge/LLM-Gemini%201.5%20Flash-orange)
-![Persona](https://img.shields.io/badge/Persona-Amazon%20Flex%20E--Commerce-green)
-![Premium](https://img.shields.io/badge/Weekly%20Premium-₹39–₹225-purple)
-![Payout](https://img.shields.io/badge/Payout%20Window-Under%202%20Hours-orange)
+![DeFi](https://img.shields.io/badge/DeFi-ZoneReinsurance%20AMM-blue)
+![ZK](https://img.shields.io/badge/Identity-ZeroKnow%20ZK--SNARK-green)
 ![Hackathon](https://img.shields.io/badge/Guidewire-DEVTrails%202026-red)
 
-**Live Demo:** https://zenith-tribe.github.io/ZoneGuard/ · **Repo:** https://github.com/Zenith-Tribe/ZoneGuard
+**Live Demo:** https://zenith-tribe.github.io/ZoneGuard/ · **Backend API:** https://zoneguard-production.up.railway.app/health · **Repo:** https://github.com/Zenith-Tribe/ZoneGuard
 
 ---
 
-## Phase 3 — Demo-Ready Platform
+## Phase 4 — Blockchain & Web3 Complete
 
 ### Quick Start (Full Stack in 3 Commands)
 
@@ -36,27 +38,35 @@ Open **http://localhost:5173** → ZoneGuard is live.
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Browser  →  React 19 + TypeScript + Tailwind + Recharts   │
-│              nginx (Docker :5173) — SPA + /api/ proxy       │
-└─────────────────┬───────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  Browser  →  React 19 + TypeScript + Tailwind + Recharts + Leaflet  │
+│              GitHub Pages (SPA) → Railway Backend API                │
+└─────────────────┬────────────────────────────────────────────────────┘
                   │ HTTP /api/v1/
-┌─────────────────▼───────────────────────────────────────────┐
-│  FastAPI Backend (:8000) — 13 routers, 11 ORM models       │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  ML Pipeline                                         │   │
-│  │  ZoneRisk Scorer → QuadSignal Fusion → FraudShield  │   │
-│  │  ZoneTwin Counterfactual · Gemini LLM Audit Reports │   │
-│  └──────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Integrations                                        │   │
-│  │  OpenWeatherMap (live) · OSRM mock · UPI mock       │   │
-│  │  WhatsApp sim · Gemini 1.5 Flash                    │   │
-│  └──────────────────────────────────────────────────────┘   │
-└────────────┬─────────────────┬───────────────────────────────┘
+┌─────────────────▼────────────────────────────────────────────────────┐
+│  FastAPI Backend — 18 routers, 22 ORM tables, 6 blockchain modules  │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │  ML Pipeline                                                  │   │
+│  │  ZoneRisk Scorer → QuadSignal Fusion → FraudShield v2 (FL)   │   │
+│  │  ZoneTwin Counterfactual · SmartClaim Autopilot (5 guardrails)│   │
+│  │  FedShield v3 (Paillier PHE + Krum + GNN fraud rings)        │   │
+│  └───────────────────────────────────────────────────────────────┘   │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │  Blockchain & Web3 Layer (12 Innovations)                     │   │
+│  │  ZoneChain (Hyperledger Fabric 3-org) · SmartPolicy Contracts │   │
+│  │  ChainOracle (4-stream decentralized) · TemporalSig (Polygon) │   │
+│  │  ZeroKnow ZK-SNARK Identity · CrossRider DID (W3C)           │   │
+│  │  DAO PremiumGov · SoulboundPolicy NFTs · ZoneReinsurance AMM  │   │
+│  └───────────────────────────────────────────────────────────────┘   │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │  Integrations                                                 │   │
+│  │  OpenWeatherMap (live) · OSRM mock · UPI mock                │   │
+│  │  WhatsApp sim · Gemini 1.5 Flash · e-Shram KYC              │   │
+│  └───────────────────────────────────────────────────────────────┘   │
+└────────────┬─────────────────┬───────────────────────────────────────┘
              │                 │
-      PostgreSQL 16       Redis 7
-      (11 tables)     (signal cache)
+      PostgreSQL 16       Redis 7        Polygon L2 (Amoy)
+      (22 tables)     (signal cache)   (TemporalSig anchors)
 ```
 
 ### 8-Step Demo Flow (Judge Walkthrough)
@@ -109,6 +119,25 @@ Open **http://localhost:5173** → ZoneGuard is live.
 - [x] **123 backend tests** — pytest: signal fusion, fraud detection, exclusion engine, zone risk, zone twin, claim pipeline, pagination, forward lock, temporal clustering, federated learning, e-Shram KYC
 - [x] **24 frontend tests** — vitest: chat responses, API service layer
 
+### Phase 4 Deliverables (Blockchain & Web3 — 12 Innovations)
+
+- [x] **Innovation 01: ZoneChain** — Federated blockchain ledger (Hyperledger Fabric, 3-org: ZoneGuard + Insurer + IRDAI observer)
+- [x] **Innovation 02: SmartPolicy Contracts** — On-chain payout formula execution, tamper-proof computation trace
+- [x] **Innovation 03: ChainOracle Network** — Decentralized 4-stream signal verification (S1-S4 multi-source consensus)
+- [x] **Innovation 04: ZeroKnow KYC** — Zero-knowledge proof identity (zk-SNARK, nullifier-based, DPDP Act compliant)
+- [x] **Innovation 05: FedShield 3.0** — Paillier homomorphic encryption + Krum Byzantine-robust aggregation + GNN fraud rings
+- [x] **Innovation 06: DAO PremiumGov** — Rider governance with non-transferable ZONE tokens, quadratic voting, actuarial guardrails
+- [x] **Innovation 07: SoulboundPolicy NFTs** — Weekly coverage credentials, Coverage Continuity Score, NBFC microloan composability
+- [x] **Innovation 08: ZoneReinsurance AMM** — Tranched risk pool (Senior/Mezzanine/Junior), yield calculator, loss waterfall
+- [x] **Innovation 09: CrossRider DID Passport** — W3C DID + Verifiable Credentials, 5 credential types, selective disclosure
+- [x] **Innovation 10: TemporalSig Archive** — Polygon L2 signal timestamping, immutable dispute proof
+- [x] **Innovation 12: SmartClaim Autopilot** — LLM autonomous adjudication with 5 guard rails (formula enforcement, confidence threshold, ZoneTwin consistency, reasoning minimum, drift monitoring)
+- [x] **59 new blockchain tests** — ZoneChain (6), SmartPolicy (7), TemporalSig (4), Oracle (6), ZK KYC (4), DID (4), DAO (6), Tokens (3), NFT (5), Reinsurance (5), SmartClaim (4), FedShield PHE (3), GNN (2)
+- [x] **182 total backend tests passing** (123 Phase 3 + 59 Phase 4)
+- [x] **Frontend blockchain pages** — BlockchainDashboard, GovernancePage, ReinsurancePage + 4 DeFi components
+- [x] **Integration wiring** — claim pipeline → ZoneChain + TemporalSig + SmartPolicy + Autopilot; payouts → reinsurance pool; governance → ZoneChain
+- [x] **Railway production deployment** — live at zoneguard-production.up.railway.app
+
 ### Key API Endpoints
 
 | Method | Endpoint | Description |
@@ -137,8 +166,24 @@ Open **http://localhost:5173** → ZoneGuard is live.
 | POST | `/api/v1/demo/reset` | Reset transient data for demo |
 | GET | `/health` | Health check |
 | GET | `/health/detailed` | DB + API key status |
+| **Blockchain & Web3** | | |
+| GET | `/api/v1/blockchain/status` | ZoneChain + TemporalSig health |
+| GET | `/api/v1/blockchain/claims/{id}/audit-trail` | Immutable claim audit trail |
+| GET | `/api/v1/blockchain/policy/{id}/terms` | On-chain policy terms (SmartPolicy) |
+| POST | `/api/v1/blockchain/temporalsig/verify` | Verify signal anchor (dispute proof) |
+| GET | `/api/v1/oracle/health` | ChainOracle network health (4 streams) |
+| POST | `/api/v1/identity/generate-proof` | ZK proof generation |
+| POST | `/api/v1/identity/verify-proof` | ZK proof verification |
+| GET | `/api/v1/identity/resolve/{did}` | DID document resolution |
+| GET | `/api/v1/governance/proposals` | Active DAO proposals |
+| POST | `/api/v1/governance/proposals` | Create governance proposal |
+| POST | `/api/v1/governance/proposals/{id}/vote` | Cast vote (quadratic) |
+| GET | `/api/v1/governance/tokens/{rider_id}` | ZONE token balance |
+| GET | `/api/v1/reinsurance/pool/state` | AMM pool status + tranches |
+| POST | `/api/v1/reinsurance/pool/stake` | Stake into tranche |
+| GET | `/api/v1/reinsurance/pool/yield-history` | Yield distribution history |
 
-Full Swagger docs: http://localhost:8000/docs
+Full Swagger docs: http://localhost:8000/docs · **Live:** https://zoneguard-production.up.railway.app/docs
 
 ### Business Rules (Critical Constraints from DEVTrails PDF)
 
@@ -880,7 +925,7 @@ The hardest part of any insurance business is distribution. ZoneGuard's B2B2C mo
 - [x] FraudShield v1 — 8-feature heuristic scorer (velocity, timing, distance, tenure)
 - [x] ZoneTwin v1 — per-zone logistic-curve counterfactual simulation (10 Bengaluru zones)
 
-### Phase 3 [April 5–17]: Scale & Optimise ← **Final Submission Package**
+### Phase 3 [April 5–12]: Scale & Optimise
 
 - [x] FraudShield v1 heuristic — velocity, timing, GPS distance, tenure scoring
 - [x] FraudShield v2 — Federated Learning simulation (Flower-inspired FedAvg, 3 city clients, privacy-preserving)
@@ -890,6 +935,24 @@ The hardest part of any insurance business is distribution. ZoneGuard's B2B2C mo
 - [x] Disruption simulation engine — 4 scenarios (flash_flood, severe_aqi, transport_strike, heat_wave)
 - [x] Forward Premium Lock feature (4-week commitment, 8% discount) — activation endpoint + frontend toggle
 - [x] e-Shram KYC integration — simulated portal verification, income proxy validation, deduplication check
+- [x] **Production deployment** — Railway (backend) + GitHub Pages (frontend)
+
+### Phase 4 [April 13–17]: Blockchain & Web3 Layer ← **Final Submission Package**
+
+- [x] ZoneChain federated ledger — Hyperledger Fabric (3-org: ZoneGuard + Insurer + IRDAI)
+- [x] SmartPolicy on-chain payout formula — deterministic, tamper-proof execution
+- [x] ChainOracle decentralized signal verification — multi-source consensus per signal stream
+- [x] TemporalSig Polygon L2 anchoring — immutable signal timestamps for dispute resolution
+- [x] ZeroKnow ZK-SNARK identity — zero PII storage, DPDP Act 2023 compliant
+- [x] CrossRider DID Passport — W3C DID + 5 Verifiable Credential types
+- [x] DAO PremiumGov — rider governance with ZONE tokens, quadratic voting, actuarial guardrails
+- [x] SoulboundPolicy NFTs — weekly coverage credentials, DeFi composability
+- [x] ZoneReinsurance AMM — institutional risk pool with 3 tranches + yield calculator
+- [x] SmartClaim Autopilot — LLM adjudication with 5 guard rails
+- [x] FedShield 3.0 — Paillier PHE + Krum aggregation + GNN fraud ring detection
+- [x] Full integration wiring — claim pipeline → blockchain → SmartPolicy → Autopilot
+- [x] 59 new blockchain tests (182 total backend tests passing)
+- [x] Frontend: BlockchainDashboard, GovernancePage, ReinsurancePage, 4 DeFi components
 - [ ] **Final pitch deck (PDF)** ← Must create for submission
 - [ ] **5-minute demo video** ← Must record for submission
 
@@ -989,8 +1052,8 @@ ZoneGuard's IRDAI "Use & File" regulatory design means product launch can begin 
 
 ---
 
-*Built for Guidewire DEVTrails 2026 · University Hackathon · Phase 2 Complete Submission*
-*Phase 1 Submitted: March 20, 2026 · Phase 2 Submitted: April 4, 2026*
+*Built for Guidewire DEVTrails 2026 · University Hackathon · Phase 4 (Blockchain) Complete*
+*Phase 1: March 20 · Phase 2: April 4 · Phase 3: April 12 · Phase 4: April 17, 2026*
 
 ---
 
