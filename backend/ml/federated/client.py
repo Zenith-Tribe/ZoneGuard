@@ -1,3 +1,6 @@
+# MERGED BY SESSION 7 — Patches from sessions: 4
+# Session 4 adds: FedShield v3 transparent override when FEDSHIELD_V3_ENABLED=true
+
 """
 FraudShield v2 — Federated Client.
 
@@ -7,6 +10,27 @@ with the central aggregation server.
 """
 
 from ml.federated.model import FederatedAnomalyModel
+
+# ── Session 4: FedShield v3 — activated by env var FEDSHIELD_V3_ENABLED=true ─
+import os as _os
+
+_FEDSHIELD_V3 = _os.getenv("FEDSHIELD_V3_ENABLED", "false").lower() == "true"
+
+if _FEDSHIELD_V3:
+    try:
+        from ml.fedshield_v3.fedshield_client import FedShieldClient as FederatedClient  # noqa: F811
+        import logging as _logging
+        _logging.getLogger(__name__).info(
+            "federated/client.py: FedShield v3 active — "
+            "using PHE-encrypted FedShieldClient."
+        )
+    except ImportError as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "FEDSHIELD_V3_ENABLED=true but FedShieldClient import failed (%s). "
+            "Falling back to FederatedClient v2.", _e
+        )
+# ── End Session 4 FedShield v3 override ───────────────────────────────────────
 
 
 class FederatedClient:
