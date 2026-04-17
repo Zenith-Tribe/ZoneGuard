@@ -40,9 +40,10 @@ if _FEDSHIELD_V3:
 
 
 class FederatedServer:
-    """Central aggregation server implementing FedAvg for FraudShield v2."""
+    """Decentralized Statistical Oracle for FraudShield v2."""
 
-    def __init__(self, num_rounds: int = 5) -> None:
+    # FIX 1: Default to 1 round (One-Shot execution)
+    def __init__(self, num_rounds: int = 1) -> None:
         self.num_rounds = num_rounds
         self.clients: list[FederatedClient] = []
         self.global_model = FederatedAnomalyModel()
@@ -58,21 +59,46 @@ class FederatedServer:
         client_weights: list[dict],
         sample_counts: list[int],
     ) -> dict:
-        """FedAvg: weighted average of client parameters by sample count."""
-        total_samples = sum(sample_counts)
-        if total_samples == 0:
+        """
+        One-Shot Aggregation with Sybil Resistance and Pooled Variance.
+        """
+        total_raw_samples = sum(sample_counts)
+        if total_raw_samples == 0:
             return client_weights[0] if client_weights else self.global_model.get_weights()
+
+        # FIX 4: Sybil Resistance (Cap Node Influence)
+        # Cap any single node's reporting weight at 20% of the total network samples
+        sybil_cap = max(1, int(total_raw_samples * 0.20))
+        effective_counts = [min(n, sybil_cap) for n in sample_counts]
+        total_effective = sum(effective_counts)
 
         feature_names = FederatedAnomalyModel.FEATURE_NAMES
         aggregated: dict = {"weights": {}, "means": {}, "stds": {}}
 
-        for param_key in ("weights", "means", "stds"):
+        # 1. Aggregate Weights and Means (Standard Weighted Average)
+        for param_key in ("weights", "means"):
             for feat in feature_names:
                 weighted_sum = sum(
                     cw[param_key][feat] * n
-                    for cw, n in zip(client_weights, sample_counts)
+                    for cw, n in zip(client_weights, effective_counts)
                 )
-                aggregated[param_key][feat] = weighted_sum / total_samples
+                aggregated[param_key][feat] = weighted_sum / total_effective
+
+        # FIX 2: Global Variance Math (Law of Total Variance)
+        # Var_global = sum(n_i * (Var_i + (Mean_i - Mean_global)^2)) / sum(n_i)
+        for feat in feature_names:
+            global_mean = aggregated["means"][feat]
+            pooled_variance_sum = 0.0
+            
+            for cw, n in zip(client_weights, effective_counts):
+                local_mean = cw["means"][feat]
+                local_var = cw["stds"][feat] ** 2
+                
+                # Law of Total Variance formulation
+                pooled_variance_sum += n * (local_var + (local_mean - global_mean) ** 2)
+            
+            aggregated_variance = pooled_variance_sum / total_effective
+            aggregated["stds"][feat] = float(np.sqrt(aggregated_variance))
 
         return aggregated
 
