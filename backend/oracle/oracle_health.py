@@ -120,7 +120,6 @@ class OracleHealthMonitor:
 
         node.consecutive_failures = 0
         node.last_success_at = datetime.now(timezone.utc)
-        node.latency_ms = latency_ms  # store for reference
 
         if RECOVERY_ON_SUCCESS:
             node.health = NodeHealth.HEALTHY

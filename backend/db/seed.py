@@ -54,6 +54,22 @@ async def seed():
     print("Creating database tables...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate existing DBs: add columns that may be missing from earlier schema
+        await conn.execute(
+            __import__("sqlalchemy").text(
+                "ALTER TABLE riders ADD COLUMN IF NOT EXISTS eshram_id VARCHAR DEFAULT NULL"
+            )
+        )
+        await conn.execute(
+            __import__("sqlalchemy").text(
+                "ALTER TABLE riders ADD COLUMN IF NOT EXISTS eshram_verified BOOLEAN DEFAULT FALSE"
+            )
+        )
+        await conn.execute(
+            __import__("sqlalchemy").text(
+                "ALTER TABLE notifications ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"
+            )
+        )
     print("Tables created.")
 
     async with async_session() as session:

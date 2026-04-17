@@ -53,7 +53,15 @@ export default function BlockchainDashboard() {
           fetch(`${API_URL}/api/v1/blockchain/irdai/parameter-changes`),
         ])
         if (statusRes.ok) {
-          setStatus(await statusRes.json())
+          const raw = await statusRes.json()
+          setStatus({
+            chain_height: raw.chain_height ?? raw.total_fabric_events_today ?? 0,
+            total_events_today: raw.total_events_today ?? raw.total_fabric_events_today ?? 0,
+            total_anchors: raw.total_anchors ?? raw.total_anchors_today ?? 0,
+            last_anchor_time: raw.last_anchor_time ?? raw.last_anchor_at ?? '',
+            fabric_status: raw.fabric_connected ? 'operational' : 'offline',
+            polygon_status: raw.polygon_connected ? 'operational' : 'offline',
+          })
           setApiAvailable(true)
         }
         if (changesRes.ok) {
@@ -68,9 +76,9 @@ export default function BlockchainDashboard() {
   }, [])
 
   const stats = [
-    { label: 'Chain Height', value: status.chain_height.toLocaleString(), icon: '🔗' },
-    { label: 'Events Today', value: status.total_events_today.toString(), icon: '📋' },
-    { label: 'Total Anchors', value: status.total_anchors.toLocaleString(), icon: '⛓️' },
+    { label: 'Chain Height', value: (status.chain_height ?? 0).toLocaleString(), icon: '🔗' },
+    { label: 'Events Today', value: (status.total_events_today ?? 0).toString(), icon: '📋' },
+    { label: 'Total Anchors', value: (status.total_anchors ?? 0).toLocaleString(), icon: '⛓️' },
     {
       label: 'Last Anchor',
       value: status.last_anchor_time

@@ -233,7 +233,7 @@ class DIDService(BaseModel):
     """
     id: str
     type: str
-    service_endpoint: str | dict[str, str]
+    service_endpoint: str | dict[str, Any]
 
 
 class DIDDocument(BaseModel):

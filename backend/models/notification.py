@@ -22,7 +22,7 @@ class Notification(Base):
     message = Column(String, nullable=False)
     data = Column(JSON, default={})  # Additional notification metadata
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 async def create_notification(db, rider_id: str, type: NotificationType, title: str, message: str, metadata: dict = None):
