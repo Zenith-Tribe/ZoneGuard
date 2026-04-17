@@ -30,7 +30,8 @@ export default function RiderDashboard() {
         const r = await getRider(storedRiderId)
         const zoneId = r.zone_id || 'hsr'
         setCurrentZoneId(zoneId)
-        setRider({ ...RIDER, name: r.name, riderId: r.id, zone: ZONES[0], weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks, eshramVerified: r.eshram_verified })
+        const riderZone = ZONES.find(z => z.id === zoneId) || ZONES[0]
+        setRider({ ...RIDER, name: r.name, riderId: r.id, zone: riderZone, weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks, eshramVerified: r.eshram_verified })
 
         const policies = await getPolicies(r.id)
         if (policies.length > 0) {

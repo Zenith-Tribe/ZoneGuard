@@ -61,9 +61,9 @@ const MOCK_POOL: PoolState = {
   active_positions: 7,
   utilization_pct: 31.5,
   tranches: [
-    { name: 'Senior', allocation_pct: 70, current_amount: 2_940_000, target_yield_min: 9, target_yield_max: 11, lock_days: 180 },
+    { name: 'Senior', allocation_pct: 70, current_amount: 2_940_000, target_yield_min: 9, target_yield_max: 11, lock_days: 90 },
     { name: 'Mezzanine', allocation_pct: 20, current_amount: 840_000, target_yield_min: 14, target_yield_max: 18, lock_days: 90 },
-    { name: 'Junior', allocation_pct: 10, current_amount: 420_000, target_yield_min: 25, target_yield_max: 30, lock_days: 30 },
+    { name: 'Junior', allocation_pct: 10, current_amount: 420_000, target_yield_min: 25, target_yield_max: 30, lock_days: 90 },
   ],
 }
 

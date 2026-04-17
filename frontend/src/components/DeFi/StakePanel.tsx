@@ -14,8 +14,8 @@ interface TrancheOption {
 
 const TRANCHES: TrancheOption[] = [
   { key: 'senior',    name: 'Senior',    yieldMin: 9,  yieldMax: 11, lockDays: 90, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
-  { key: 'mezzanine', name: 'Mezzanine', yieldMin: 14, yieldMax: 18, lockDays: 60, color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30' },
-  { key: 'junior',    name: 'Junior',    yieldMin: 25, yieldMax: 30, lockDays: 30, color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/30' },
+  { key: 'mezzanine', name: 'Mezzanine', yieldMin: 14, yieldMax: 18, lockDays: 90, color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30' },
+  { key: 'junior',    name: 'Junior',    yieldMin: 25, yieldMax: 30, lockDays: 90, color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/30' },
 ]
 
 interface Props {

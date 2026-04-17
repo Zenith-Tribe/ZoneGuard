@@ -70,6 +70,15 @@ async def lifespan(app: FastAPI):
 
     # Startup
     logger.info("Starting ZoneGuard API...")
+
+    # Initialize database tables (create if not exist)
+    from db.database import engine, Base
+    # Import all models so Base.metadata knows about them
+    import models  # noqa: F401
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database schema initialized")
+
     start_scheduler()
 
     # Session 1: Initialize blockchain clients (ZoneChain + TemporalSig)
@@ -104,14 +113,22 @@ if HAS_SLOWAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS
+# CORS — allow Railway and GitHub Pages origins
+cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
+# If a wildcard pattern exists, replace with ["*"] for CORSMiddleware compatibility
+if any("*" in o for o in cors_origins):
+    cors_origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# TrustedHost — Railway proxies requests with its own Host header
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ── Session 4: AdaptPremium Admin Endpoints (Innovation 13) ───────────────────
 from fastapi import APIRouter, HTTPException, BackgroundTasks

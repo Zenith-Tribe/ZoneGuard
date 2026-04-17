@@ -76,8 +76,8 @@ export default function OnboardingPage() {
 
   const selectedZone = normalizedZones.find(z => z.id === selectedZoneId)
   const earningsNum = parseInt(earnings, 10)
-  const dailyAvg = earnings && !isNaN(earningsNum) ? Math.round(earningsNum / 7) : 0
-  const perDayPayout = Math.round(dailyAvg * 0.55)
+  const dailyAvg = earnings && !isNaN(earningsNum) ? Math.round((earningsNum / 7) * 100) / 100 : 0
+  const perDayPayout = Math.round(dailyAvg * 0.55 * 100) / 100
 
   const goBack = () => {
     if (step === 1) navigate('/')
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
                     ['Weekly premium', `₹${selectedZone.weeklyPremium}`],
                     ['Max payout/week', `₹${(selectedZone.maxWeeklyPayout ?? 0).toLocaleString()}`],
                     ['Per-day payout', earnings && earningsNum > 0
-                      ? `₹${perDayPayout.toLocaleString()} (55% of ₹${dailyAvg.toLocaleString()} daily avg)`
+                      ? `₹${perDayPayout.toLocaleString('en-IN', { maximumFractionDigits: 0 })} (55% of ₹${dailyAvg.toLocaleString('en-IN', { maximumFractionDigits: 0 })} daily avg)`
                       : '— Enter earnings above'],
                   ] as [string, string][]).map(([k, v]) => (
                     <div key={k} className="flex justify-between py-1.5 border-b border-amber-100 last:border-0">
@@ -300,6 +300,14 @@ export default function OnboardingPage() {
           )}
 
           {/* Step 4: Success */}
+          {step === 4 && !selectedZone && (
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 sm:p-8 text-center">
+              <p className="text-stone-600 mb-4">No zone selected. Please complete onboarding from Step 1.</p>
+              <button onClick={() => setStep(1)} className="px-6 py-2 bg-stone-800 text-white rounded-full text-sm font-semibold hover:bg-stone-700 transition-colors">
+                Start Over
+              </button>
+            </div>
+          )}
           {step === 4 && selectedZone && (
             <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 sm:p-8 text-center">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">

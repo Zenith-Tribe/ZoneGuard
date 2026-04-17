@@ -39,19 +39,23 @@ export default function AdminDashboard() {
         setZones(z)
         setApiAvailable(true)
 
-        const kpiData = await getKPIs()
-        if (kpiData.kpis) setKPIs(kpiData.kpis)
+        try {
+          const kpiData = await getKPIs()
+          if (kpiData.kpis) setKPIs(kpiData.kpis)
+        } catch { /* KPIs fallback to mock */ }
 
-        const c = await getAdminClaims({ per_page: 50 })
-        if (c.items && c.items.length > 0) {
-          setClaims(c.items.map((claim) => ({
-            id: claim.id, zone: claim.zone_id, zone_id: claim.zone_id, rider_id: claim.rider_id,
-            date: claim.created_at?.split('T')[0] || '', confidence: claim.confidence,
-            signals: 3, recommendedPayout: claim.recommended_payout, recommended_payout: claim.recommended_payout,
-            auditSummary: '', status: claim.status,
-            exclusion_check: claim.exclusion_check, fraud_score: claim.fraud_score,
-          })))
-        }
+        try {
+          const c = await getAdminClaims({ per_page: 50 })
+          if (c.items && c.items.length > 0) {
+            setClaims(c.items.map((claim) => ({
+              id: claim.id, zone: claim.zone_id, zone_id: claim.zone_id, rider_id: claim.rider_id,
+              date: claim.created_at?.split('T')[0] || '', confidence: claim.confidence,
+              signals: 3, recommendedPayout: claim.recommended_payout, recommended_payout: claim.recommended_payout,
+              auditSummary: '', status: claim.status,
+              exclusion_check: claim.exclusion_check, fraud_score: claim.fraud_score,
+            })))
+          }
+        } catch { /* Claims fallback to mock */ }
       } catch {
         setApiAvailable(false)
         setZones(ZONES as RawApiZone[])
