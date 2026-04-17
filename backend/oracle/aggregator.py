@@ -45,6 +45,7 @@ from oracle.models import (
     S1NormalisedReading,
     S2NormalisedReading,
     S3NormalisedReading,
+    S4NormalisedReading,
 )
 from oracle.oracle_health import OracleHealthMonitor
 
@@ -56,6 +57,7 @@ logger = logging.getLogger(__name__)
 S1_AGREEMENT_TOLERANCE_PCT   = 20.0   # e.g. rainfall readings within 20%
 S2_AGREEMENT_TOLERANCE_PCT   = 25.0   # mobility index within 25%
 S3_AGREEMENT_TOLERANCE_PCT   = 30.0   # order volume index within 30%
+S4_AGREEMENT_TOLERANCE_PCT   = 15.0   # inactivity_pct within 15%
 
 # Circuit breaker
 CIRCUIT_BREAKER_THRESHOLD    = 3      # consecutive failures before node excluded
@@ -85,6 +87,7 @@ class OracleAggregator:
             OracleStream.S1_ENVIRONMENTAL: DEFAULT_S1_THRESHOLD,
             OracleStream.S2_MOBILITY:      DEFAULT_S2_THRESHOLD,
             OracleStream.S3_ECONOMIC:      DEFAULT_S3_THRESHOLD,
+            OracleStream.S4_CROWD:         2,  # 2 of 3 nodes
         }
 
     def update_threshold(self, stream: OracleStream, threshold: int) -> None:
@@ -144,6 +147,22 @@ class OracleAggregator:
         ]
         readings = await self._fetch_all(sources, OracleStream.S3_ECONOMIC, zone_id=zone_id)
         return await self._consensus_s3(readings)
+
+    async def get_s4_consensus(self, zone_id: str) -> ConsensusResult:
+        """Fetch and consensus-check all S4 Crowd oracle nodes."""
+        from oracle.sources.crowd_oracle import (
+            fetch_whatsapp_checkins,
+            fetch_flex_app_pulse,
+            fetch_manual_survey,
+        )
+
+        sources = [
+            ("whatsapp_business", fetch_whatsapp_checkins),
+            ("flex_app_pulse",    fetch_flex_app_pulse),
+            ("manual_survey",     fetch_manual_survey),
+        ]
+        readings = await self._fetch_all(sources, OracleStream.S4_CROWD, zone_id=zone_id)
+        return await self._consensus_s4(readings)
 
     # ── Fetching ──────────────────────────────────────────────────────────────
 
@@ -532,6 +551,94 @@ class OracleAggregator:
             consensus_ref=self._compute_consensus_ref(verified),
         )
 
+    # ── S4 Consensus ──────────────────────────────────────────────────────────
+
+    async def _consensus_s4(self, readings: list) -> ConsensusResult:
+        """S4 Crowd: 2/3 nodes must agree on inactivity_pct within tolerance."""
+        stream = OracleStream.S4_CROWD
+        threshold = self._thresholds[stream]
+
+        successful = [r for r in readings if r.success and isinstance(r, OracleReading)]
+        failed = [r for r in readings if not r.success]
+        verified = [r for r in successful if self._verify_signature(r)]
+
+        normalised = []
+        for r in verified:
+            try:
+                norm = self._normalise_s4(r)
+                normalised.append((r.source_id, norm))
+            except Exception as exc:
+                logger.warning(f"OracleAggregator: S4 normalisation failed for {r.source_id}: {exc}")
+
+        if len(normalised) < threshold:
+            return ConsensusResult(
+                stream=stream,
+                status=ConsensusStatus.INSUFFICIENT_CONSENSUS,
+                nodes_polled=len(readings),
+                nodes_agreed=len(normalised),
+                threshold_required=threshold,
+                failed_sources=[r.source_id for r in failed],
+            )
+
+        inactivity_values = [n.inactivity_pct for _, n in normalised]
+        median_inactivity = statistics.median(inactivity_values)
+
+        # Statistical distribution test: flag if std_dev > 20
+        if len(inactivity_values) > 1:
+            std_dev = statistics.stdev(inactivity_values)
+            if std_dev > 20:
+                logger.warning(
+                    f"OracleAggregator: S4 high variance — std_dev={std_dev:.1f}% "
+                    f"across {len(normalised)} nodes"
+                )
+
+        agreeing = [
+            (s, n) for s, n in normalised
+            if self._within_tolerance(n.inactivity_pct, median_inactivity, S4_AGREEMENT_TOLERANCE_PCT)
+        ]
+        dissenting = [s for s, n in normalised if s not in [a for a, _ in agreeing]]
+
+        if len(agreeing) < threshold:
+            return ConsensusResult(
+                stream=stream,
+                status=ConsensusStatus.INSUFFICIENT_CONSENSUS,
+                nodes_polled=len(readings),
+                nodes_agreed=len(agreeing),
+                threshold_required=threshold,
+                agreeing_sources=[s for s, _ in agreeing],
+                dissenting_sources=dissenting,
+                failed_sources=[r.source_id for r in failed],
+            )
+
+        agg_inactivity = statistics.median([n.inactivity_pct for _, n in agreeing])
+        agg_total_riders = max(n.total_riders for _, n in agreeing)
+        agg_inactive = round(agg_total_riders * agg_inactivity / 100)
+        aggregated = {
+            "inactivity_pct":   round(agg_inactivity, 2),
+            "inactive_riders":  agg_inactive,
+            "total_riders":     agg_total_riders,
+            "source":           "oracle_consensus",
+            "agreeing_nodes":   [s for s, _ in agreeing],
+        }
+
+        logger.info(
+            f"OracleAggregator: S4 ACCEPTED — "
+            f"{len(agreeing)}/{len(readings)} nodes agree. inactivity={agg_inactivity:.1f}%"
+        )
+
+        return ConsensusResult(
+            stream=stream,
+            status=ConsensusStatus.ACCEPTED,
+            aggregated_value=aggregated,
+            agreeing_sources=[s for s, _ in agreeing],
+            dissenting_sources=dissenting,
+            failed_sources=[r.source_id for r in failed],
+            nodes_polled=len(readings),
+            nodes_agreed=len(agreeing),
+            threshold_required=threshold,
+            consensus_ref=self._compute_consensus_ref(verified),
+        )
+
     # ── Normalisation helpers ─────────────────────────────────────────────────
 
     def _normalise_s1(self, reading: OracleReading) -> S1NormalisedReading:
@@ -646,6 +753,17 @@ class OracleAggregator:
             )
         else:
             raise ValueError(f"Unknown S3 source: {source}")
+
+    def _normalise_s4(self, reading: OracleReading) -> S4NormalisedReading:
+        """Map a raw S4 crowd source dict to normalised reading."""
+        d = reading.data
+        return S4NormalisedReading(
+            inactivity_pct=d.get("inactivity_pct", 0.0),
+            total_riders=d.get("total_riders", 0),
+            inactive_riders=d.get("inactive_riders", 0),
+            response_rate=d.get("response_rate"),
+            source_id=reading.source_id,
+        )
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

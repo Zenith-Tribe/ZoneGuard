@@ -127,6 +127,17 @@ async def retry_payout(payout_id: str, db: AsyncSession = Depends(get_db)):
     if result["status"] == "settled":
         payout.settled_at = datetime.now(timezone.utc)
 
+        # Wire to ZoneReinsurance AMM — absorb payout as loss
+        try:
+            from defi.reinsurance_pool import absorb_payout_loss
+            import asyncio
+            asyncio.create_task(
+                absorb_payout_loss(float(payout.amount), db)
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Reinsurance loss absorption skipped: {e}")
+
     await db.commit()
 
     return {

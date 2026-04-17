@@ -298,3 +298,39 @@ class AnchorVerifyResponse(BaseModel):
     block_timestamp_utc: Optional[datetime]
     polygonscan_url: Optional[str]
     verification_message: str
+
+
+# ---------------------------------------------------------------------------
+# Innovation 02: SmartPolicy Contracts — On-Chain Policy Execution
+# ---------------------------------------------------------------------------
+
+class PolicyTermsOnChain(BaseModel):
+    """Immutable policy terms stored on Fabric chain state."""
+    rider_id: str
+    zone_id: str
+    risk_tier: str
+    premium_inr: float
+    payout_pct: float = 0.55
+    max_consecutive_days: int = 3
+    earnings_baseline_weekly: float
+    exclusions_hash: str                    # SHA-256 of exclusion list
+    fraud_threshold: float = 0.85
+    is_forward_locked: bool = False
+    forward_lock_weeks: int = 0
+    forward_lock_discount_pct: float = 0.08
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    chain_tx_id: Optional[str] = None
+
+
+class SmartPolicyResult(BaseModel):
+    """Result of on-chain payout execution."""
+    claim_id: str
+    rider_id: str
+    event_id: str
+    payout_amount_inr: float
+    formula_inputs: dict                    # All inputs used in calculation
+    formula_version: str = "1.0.0"
+    on_chain_tx_id: Optional[str] = None
+    fraud_gate_passed: bool = True
+    fraud_score: Optional[float] = None
+    computation_trace: dict = Field(default_factory=dict)  # Step-by-step trace

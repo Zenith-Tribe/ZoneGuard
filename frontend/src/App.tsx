@@ -6,6 +6,9 @@ import RiderDashboard from './pages/RiderDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import OnboardingPage from './pages/Onboarding'
 import PolicyPage from './pages/PolicyPage'
+import BlockchainDashboard from './pages/BlockchainDashboard'
+import GovernancePage from './pages/GovernancePage'
+import ReinsurancePage from './pages/ReinsurancePage'
 import NotFound from './pages/NotFound'
 import { ChatWidget } from './components/Chatbot'
 
@@ -19,6 +22,9 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/policy" element={<PolicyPage />} />
+          <Route path="/blockchain" element={<BlockchainDashboard />} />
+          <Route path="/governance" element={<GovernancePage />} />
+          <Route path="/reinsurance" element={<ReinsurancePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <ChatWidget />

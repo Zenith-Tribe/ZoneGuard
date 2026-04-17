@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { ZONES, KPIS, CLAIMS_QUEUE } from '../data/mock'
 import { getZones, getKPIs, getAdminClaims, reviewClaim, getZoneSignals, getClaimAuditReport, trainFederatedModel, getTemporalAnalysis } from '../services/api'
 import KPIStrip from '../components/Admin/KPIStrip'
@@ -543,6 +543,50 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Blockchain & DeFi Navigation */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 sm:p-5">
+          <h2 className="text-white font-bold text-base mb-1">Blockchain & DeFi</h2>
+          <p className="text-slate-400 text-xs mb-3">On-chain infrastructure, governance, and reinsurance</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Link
+              to="/blockchain"
+              className="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-3 hover:border-violet-500/50 hover:bg-slate-900/80 transition-colors group"
+            >
+              <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center text-sm flex-shrink-0 group-hover:bg-violet-500/30 transition-colors">
+                ⛓️
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm group-hover:text-violet-300 transition-colors">ZoneChain Explorer</p>
+                <p className="text-slate-500 text-xs">Audit trails, anchors, parameter log</p>
+              </div>
+            </Link>
+            <Link
+              to="/governance"
+              className="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-3 hover:border-amber-500/50 hover:bg-slate-900/80 transition-colors group"
+            >
+              <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center text-sm flex-shrink-0 group-hover:bg-amber-500/30 transition-colors">
+                ⬡
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm group-hover:text-amber-300 transition-colors">Governance</p>
+                <p className="text-slate-500 text-xs">DAO proposals, voting, ZONE tokens</p>
+              </div>
+            </Link>
+            <Link
+              to="/reinsurance"
+              className="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-3 hover:border-emerald-500/50 hover:bg-slate-900/80 transition-colors group"
+            >
+              <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center text-sm flex-shrink-0 group-hover:bg-emerald-500/30 transition-colors">
+                🏦
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors">Reinsurance Pool</p>
+                <p className="text-slate-500 text-xs">Tranches, staking, stress tests</p>
+              </div>
+            </Link>
+          </div>
         </div>
 
         <div className="text-center pb-4">

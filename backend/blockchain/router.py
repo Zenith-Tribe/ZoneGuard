@@ -28,9 +28,12 @@ from .models import (
     AnchorVerifyResponse,
     BlockchainStatusResponse,
     ClaimAuditTrailResponse,
+    PolicyTermsOnChain,
+    SmartPolicyResult,
     TemporalSigAnchor,
     ZoneChainEvent,
 )
+from .smart_policy import SmartPolicyEngine, get_smart_policy
 from .temporalsig import TemporalSigClient, get_temporalsig_client
 from .zonechain import ZoneChainClient, get_zonechain_client
 
@@ -298,3 +301,55 @@ async def get_parameter_changes(
         "total": 0,
         "message": "Wire to Fabric parametersCollection query",
     }
+
+
+# ---------------------------------------------------------------------------
+# Innovation 02: SmartPolicy Contracts — On-Chain Policy Execution
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/policy/{policy_id}/terms",
+    response_model=PolicyTermsOnChain,
+    summary="Immutable on-chain policy terms",
+    description=(
+        "Fetches the immutable policy terms stored on the Fabric chain state "
+        "for a given policy/rider ID. These terms include payout percentage, "
+        "max consecutive days, earnings baseline, exclusion hash, and Forward "
+        "Premium Lock details. Once written, these terms cannot be altered."
+    ),
+)
+async def get_policy_terms_on_chain(
+    policy_id: str,
+    engine: SmartPolicyEngine = Depends(get_smart_policy),
+) -> PolicyTermsOnChain:
+    terms = engine.get_policy_terms(policy_id)
+    if terms is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No on-chain policy terms found for '{policy_id}'",
+        )
+    return terms
+
+
+class VerifyPayoutRequest(BaseModel):
+    claim_id: str
+
+
+@router.post(
+    "/policy/verify-payout",
+    summary="Verify payout calculation against on-chain formula",
+    description=(
+        "Re-derives the payout amount from on-chain inputs and compares it "
+        "to the recorded result. Returns VERIFIED if the amounts match, "
+        "MISMATCH otherwise. Used for dispute resolution and regulatory audit."
+    ),
+)
+async def verify_payout_on_chain(
+    request: VerifyPayoutRequest,
+    engine: SmartPolicyEngine = Depends(get_smart_policy),
+) -> dict:
+    try:
+        verification = engine.verify_payout_calculation(request.claim_id)
+        return verification
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

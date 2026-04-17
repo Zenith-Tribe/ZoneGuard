@@ -51,6 +51,9 @@ from governance.zone_token import (
 )
 from governance.models import ZoneTokenEvent
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 # ─────────────────────────────────────────────
 # Constants
@@ -365,31 +368,40 @@ async def _execute_on_chain(
     """
     Execute a passed proposal by writing to GovernanceChaincode on ZoneChain.
 
-    PRODUCTION: Call Hyperledger Fabric SDK:
-        fabric_client.submit_transaction(
-            "GovernanceChaincode",
-            "ExecuteParameterChange",
-            proposal.parameter,
-            str(proposal.proposed_value),
-            proposal.id,
+    Attempts real ZoneChain write via Fabric client. Falls back to simulated
+    tx hash if ZoneChain is unavailable (dev/CI environments).
+    """
+    try:
+        from blockchain.zonechain import get_zonechain_client
+        zc = get_zonechain_client()
+
+        event = await zc.write_parameter_change(
+            parameter_name=proposal.parameter,
+            old_value=str(getattr(proposal, "current_value", "unknown")),
+            new_value=str(proposal.proposed_value),
+            changed_by_admin_id=f"DAO-PROPOSAL-{proposal.id}",
+            justification=proposal.rationale or f"DAO vote passed for {proposal.parameter}",
         )
 
-    HACKATHON DEMO: Simulate with deterministic tx hash.
-    """
-    # Simulated Fabric tx hash (deterministic for demo reproducibility)
-    payload_str = f"{proposal.id}:{proposal.parameter}:{proposal.proposed_value}"
-    tx_hash = "FABRIC-" + hashlib.sha256(payload_str.encode()).hexdigest()[:16].upper()
+        tx_hash = event.event_id
+        logger.info(
+            "GovernanceChaincode.ExecuteParameterChange via ZoneChain | "
+            "proposal=%s param=%s value=%s tx=%s",
+            proposal.id, proposal.parameter, proposal.proposed_value, tx_hash,
+        )
+        return tx_hash
 
-    # In production, also update the live parameter in the config/settings table
-    # For demo: log the execution
-    import logging
-    logging.getLogger(__name__).info(
-        "GovernanceChaincode.ExecuteParameterChange | "
-        "proposal=%s param=%s value=%s tx=%s",
-        proposal.id, proposal.parameter, proposal.proposed_value, tx_hash,
-    )
-
-    return tx_hash
+    except Exception as e:
+        # Fallback to simulated tx hash if ZoneChain unavailable
+        logger.warning(f"ZoneChain write failed, using simulated tx: {e}")
+        payload_str = f"{proposal.id}:{proposal.parameter}:{proposal.proposed_value}"
+        tx_hash = "FABRIC-" + hashlib.sha256(payload_str.encode()).hexdigest()[:16].upper()
+        logger.info(
+            "GovernanceChaincode.ExecuteParameterChange (simulated) | "
+            "proposal=%s param=%s value=%s tx=%s",
+            proposal.id, proposal.parameter, proposal.proposed_value, tx_hash,
+        )
+        return tx_hash
 
 
 # ─────────────────────────────────────────────

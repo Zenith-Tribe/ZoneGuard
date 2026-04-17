@@ -27,6 +27,7 @@ class OracleStream(str, Enum):
     S1_ENVIRONMENTAL = "S1_ENVIRONMENTAL"
     S2_MOBILITY      = "S2_MOBILITY"
     S3_ECONOMIC      = "S3_ECONOMIC"
+    S4_CROWD         = "S4_CROWD"
 
 
 class ConsensusStatus(str, Enum):
@@ -129,6 +130,20 @@ class S3NormalisedReading(BaseModel):
     source_id:          str = ""
 
 
+# ─── S4 Crowd Normalised ─────────────────────────────────────────────────────
+
+class S4NormalisedReading(BaseModel):
+    """
+    Normalised crowd signal data. inactivity_pct is the percentage of
+    zone riders reporting/detected as inactive (0-100 scale).
+    """
+    inactivity_pct: float = Field(ge=0, le=100)
+    total_riders:   int   = Field(ge=0)
+    inactive_riders: int  = Field(ge=0)
+    response_rate:  Optional[float] = None  # % of riders who responded
+    source_id:      str = ""
+
+
 # ─── Consensus Result ─────────────────────────────────────────────────────────
 
 class ConsensusResult(BaseModel):
@@ -206,6 +221,8 @@ class OracleNetworkHealth(BaseModel):
     s2_required_count:    int = 2
     s3_healthy_count:     int = 0
     s3_required_count:    int = 2
+    s4_healthy_count:     int = 0
+    s4_required_count:    int = 2
     overall_health:       NodeHealth = NodeHealth.HEALTHY
     warnings:             list[str] = Field(default_factory=list)
 

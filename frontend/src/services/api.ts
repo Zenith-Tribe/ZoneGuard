@@ -207,5 +207,41 @@ export const getTemporalAnalysis = (zoneId: string) =>
     `/api/v1/admin/fraud/temporal-analysis/${zoneId}`
   )
 
+// ─── DeFi / Reinsurance ─────────────────────────────────────────────
+export const getPoolState = () =>
+  fetchAPI<{
+    total_pool_inr: number; senior_pool_inr: number; mezzanine_pool_inr: number; junior_pool_inr: number;
+    loss_ratio_ltm: number; active_positions: number; utilization_pct: number;
+    tranches: { name: string; allocation_pct: number; current_amount: number; target_yield_min: number; target_yield_max: number }[];
+  }>('/api/v1/reinsurance/pool/state')
+
+export const getPoolTranches = () =>
+  fetchAPI<{ name: string; allocation_pct: number; current_amount: number; target_yield_min: number; target_yield_max: number; lock_days: number }[]>(
+    '/api/v1/reinsurance/pool/tranches'
+  )
+
+export const stakeIntoPool = (payload: { provider_id: string; amount: number; tranche: string }) =>
+  fetchAPI<{ position_id: string; provider_id: string; tranche: string; amount: number; expected_yield: number; unlock_date: string }>(
+    '/api/v1/reinsurance/pool/stake', { method: 'POST', body: JSON.stringify(payload) }
+  )
+
+export const getProviderPositions = (providerId: string) =>
+  fetchAPI<{ positions: { position_id: string; tranche: string; amount: number; expected_yield: number; accrued_yield: number; staked_at: string; unlock_date: string; is_locked: boolean }[] }>(
+    `/api/v1/reinsurance/pool/positions/${providerId}`
+  )
+
+export const withdrawPosition = (positionId: string, providerId: string) =>
+  fetchAPI<{ position_id: string; amount_returned: number; yield_paid: number; status: string }>(
+    `/api/v1/reinsurance/pool/positions/${positionId}/withdraw`, {
+      method: 'POST',
+      body: JSON.stringify({ provider_id: providerId }),
+    }
+  )
+
+export const getYieldHistory = () =>
+  fetchAPI<{ distributions: { date: string; tranche: string; yield_amount: number; pool_size: number; apy: number }[] }>(
+    '/api/v1/reinsurance/pool/yield-history'
+  )
+
 // Re-export Zone for consumers that used the old `getZones` → Zone[] pattern
 export type { Zone }
