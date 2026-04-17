@@ -124,7 +124,6 @@ def _interpret(expected_pct: float, rainfall: float, baseline: dict) -> str:
         )
 
 
-<<<<<<< update-features-for-p3
 def get_predictive_hedge_opportunity(zone_id: str) -> dict:
     """
     Phase 3: Sunday-night predictive nudge logic.
