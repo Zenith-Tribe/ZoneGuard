@@ -102,19 +102,10 @@ class SignalBatchPayload(BaseModel):
     @property
     def keccak256_hash(self) -> str:
         """
-        keccak256 of canonical_json.
-        Uses sha3_256 as a keccak256 approximation via pysha3 if available,
-        falls back to sha256 with a 'keccak256:' prefix marker for clarity.
+        keccak256 approximation via Python 3.12+ built-in hashlib.sha3_256.
         """
-        try:
-            import sha3  # pysha3 package
-            k = hashlib.new("sha3_256")
-            k.update(self.canonical_json.encode("utf-8"))
-            return "0x" + k.hexdigest()
-        except Exception:
-            # Fallback: standard sha256 (note in production use pysha3 or web3.py keccak)
-            digest = hashlib.sha256(self.canonical_json.encode("utf-8")).hexdigest()
-            return "0xsha256:" + digest  # Marked so ops team can identify non-keccak hashes
+        k = hashlib.sha3_256(self.canonical_json.encode("utf-8"))
+        return "0x" + k.hexdigest()
 
 
 # ---------------------------------------------------------------------------
