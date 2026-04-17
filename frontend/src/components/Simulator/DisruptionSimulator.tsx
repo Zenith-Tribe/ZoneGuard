@@ -23,7 +23,13 @@ export default function DisruptionSimulator({ zones, onSimulationTriggered }: Pr
   const [scenario, setScenario] = useState('flash_flood')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [scenarios, setScenarios] = useState(FALLBACK_SCENARIOS)
+
+  // Update zoneId when zones prop loads asynchronously
+  useEffect(() => {
+    if (zones.length > 0 && !zoneId) setZoneId(zones[0].id)
+  }, [zones])
 
   useEffect(() => {
     getScenarios()
@@ -40,14 +46,20 @@ export default function DisruptionSimulator({ zones, onSimulationTriggered }: Pr
   }, [])
 
   const handleTrigger = async () => {
+    if (!zoneId) { setError('Select a zone first'); return }
     setLoading(true)
     setResult(null)
+    setError(null)
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000)
       const res = await triggerSimulation(zoneId, scenario)
+      clearTimeout(timeout)
       setResult(res)
       onSimulationTriggered?.(res)
-    } catch (err) {
-      console.error('Simulation failed:', err)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Simulation failed'
+      setError(msg.includes('abort') ? 'Request timed out — Railway may be slow. Try again.' : msg)
     } finally {
       setLoading(false)
     }
@@ -116,6 +128,13 @@ export default function DisruptionSimulator({ zones, onSimulationTriggered }: Pr
           '⚡ TRIGGER DISRUPTION'
         )}
       </button>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Result */}
       {result && (
