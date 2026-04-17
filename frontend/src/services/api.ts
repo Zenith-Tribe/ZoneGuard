@@ -4,7 +4,7 @@ import type {
   KPI, SimulationResult,
 } from '../types'
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:8000'
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const method = options?.method?.toUpperCase() ?? 'GET'

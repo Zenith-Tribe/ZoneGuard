@@ -34,7 +34,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://zoneguard-production.up.railway.app' }}
         run: npm run build
 
       - uses: actions/configure-pages@v4
