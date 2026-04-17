@@ -74,7 +74,7 @@ class FederatedAnomalyModel:
             return
 
         for feat in self.FEATURE_NAMES:
-            values = np.array([d[feat] for d in data], dtype=np.float64)
+            values = np.array([d.get(feat, 0.0) for d in data], dtype=np.float64)
             self.means[feat] = float(np.mean(values))
             std = float(np.std(values))
             # Guard against zero std (constant feature).
