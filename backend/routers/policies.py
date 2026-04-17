@@ -1,3 +1,6 @@
+# MERGED BY SESSION 7 — Patches from sessions: 2
+# No other sessions patched policies.py
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,6 +15,24 @@ from ml.zone_risk_scorer import calculate_zone_premium
 from models.notification import create_notification, NotificationType
 from datetime import datetime, timedelta, timezone
 import uuid
+
+# ── Session 2: SmartPolicy Chaincode (lazy import) ────────────────────────────
+import asyncio
+import logging
+
+_policy_chaincode_logger = logging.getLogger("chaincode.policy")
+
+def _get_policy_sdk():
+    try:
+        from chaincode.chaincode_sdk import policy_sdk
+        return policy_sdk
+    except ImportError:
+        _policy_chaincode_logger.warning(
+            "chaincode_sdk not available — policy will not be recorded on-chain. "
+            "This is expected in dev/test before ZoneChain is running."
+        )
+        return None
+# ── End Session 2 imports ─────────────────────────────────────────────────────
 
 router = APIRouter(prefix="/api/v1/policies", tags=["policies"])
 
@@ -56,7 +77,6 @@ async def create_policy(payload: PolicyCreate, db: AsyncSession = Depends(get_db
     # Attach all 10 standard exclusions
     exclusion_types = get_all_exclusion_types()
     for excl in exclusion_types:
-        # Ensure exclusion type exists in DB
         existing = await db.get(PolicyExclusionType, excl["id"])
         if not existing:
             db.add(PolicyExclusionType(**excl))
@@ -68,7 +88,7 @@ async def create_policy(payload: PolicyCreate, db: AsyncSession = Depends(get_db
         )
         db.add(applied)
 
-    # Create premium payment record for the policy
+    # Create premium payment record
     premium_payment = PremiumPayment(
         id=str(uuid.uuid4()),
         rider_id=policy.rider_id,
@@ -93,6 +113,30 @@ async def create_policy(payload: PolicyCreate, db: AsyncSession = Depends(get_db
 
     await db.commit()
     await db.refresh(policy)
+
+    # ── Session 2: Record policy on-chain (fire-and-forget) ───────────────────
+    _policy_sdk = _get_policy_sdk()
+    if _policy_sdk:
+        async def _write_policy_on_chain():
+            try:
+                await _policy_sdk.create_policy(
+                    policy_id=policy.id,
+                    rider_id=str(policy.rider_id),
+                    zone_id=str(policy.zone_id),
+                    weekly_premium=float(policy.weekly_premium),
+                    max_payout=float(policy.max_payout),
+                    coverage_start=policy.coverage_start.isoformat(),
+                    coverage_end=policy.coverage_end.isoformat(),
+                    is_forward_locked=bool(policy.is_forward_locked),
+                    forward_lock_weeks=int(policy.forward_lock_weeks or 0),
+                )
+                _policy_chaincode_logger.info(f"Policy {policy.id} recorded on-chain")
+            except Exception as exc:
+                _policy_chaincode_logger.error(
+                    f"Policy {policy.id} chaincode write failed (will reconcile): {exc}"
+                )
+        asyncio.create_task(_write_policy_on_chain())
+    # ── End Session 2 create policy on-chain ──────────────────────────────────
 
     return {
         "policy": {
@@ -129,7 +173,6 @@ async def get_policy(policy_id: str, db: AsyncSession = Depends(get_db)):
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
-    # Get applied exclusions
     result = await db.execute(
         select(PolicyExclusionType)
         .join(PolicyAppliedExclusion)
@@ -176,7 +219,6 @@ async def renew_policy(policy_id: str, db: AsyncSession = Depends(get_db)):
     db.add(new_policy)
     await db.flush()
 
-    # Create premium payment record for the renewed policy
     premium_payment = PremiumPayment(
         id=str(uuid.uuid4()),
         rider_id=new_policy.rider_id,
@@ -192,6 +234,22 @@ async def renew_policy(policy_id: str, db: AsyncSession = Depends(get_db)):
     db.add(premium_payment)
 
     await db.commit()
+
+    # ── Session 2: Record renewal on-chain ────────────────────────────────────
+    _policy_sdk = _get_policy_sdk()
+    if _policy_sdk:
+        async def _renew_on_chain():
+            try:
+                await _policy_sdk.renew_policy(
+                    policy_id=policy_id,
+                    new_coverage_start=new_policy.coverage_start.isoformat(),
+                    new_coverage_end=new_policy.coverage_end.isoformat(),
+                )
+                _policy_chaincode_logger.info(f"Policy {policy_id} renewal recorded on-chain → {new_policy.id}")
+            except Exception as exc:
+                _policy_chaincode_logger.error(f"Policy renewal chaincode write failed: {exc}")
+        asyncio.create_task(_renew_on_chain())
+    # ── End Session 2 renew on-chain ──────────────────────────────────────────
 
     return {"old_policy_id": policy_id, "new_policy": PolicyResponse.model_validate(new_policy)}
 

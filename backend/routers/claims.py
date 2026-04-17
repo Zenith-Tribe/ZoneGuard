@@ -1,4 +1,16 @@
+<<<<<<< update-features-for-p3
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+=======
+# MERGED BY SESSION 7 — Patches from sessions: 1, 2
+# Session 6 (Autopilot MEDIUM-confidence path) NOT applied — session did not complete.
+# [INTEGRATION WARNING] Session 6 was supposed to add Autopilot for MEDIUM confidence
+#   claims. That path is absent. Claims with MEDIUM confidence still go to human review.
+# [INTEGRATION WARNING] PATCH 1-6/1-7 assume claim object attributes: rider_id,
+#   policy_id, zone_id, confidence_tier, composite_score, payout_amount.
+#   Verify these against models/claim.py before deploying.
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+>>>>>>> main
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from db.database import get_db
@@ -11,6 +23,28 @@ from integrations.payout_sim import process_payout
 from integrations.gemini import generate_audit_report
 from datetime import datetime, timezone
 from typing import Optional
+
+# ── Session 2: SmartPolicy ChainSDK (lazy import) ─────────────────────────────
+import asyncio
+import hashlib
+import logging
+
+_claim_chaincode_logger = logging.getLogger("chaincode.claim")
+
+def _get_claim_sdk():
+    try:
+        from chaincode.chaincode_sdk import claim_sdk
+        return claim_sdk
+    except ImportError:
+        _claim_chaincode_logger.warning(
+            "chaincode_sdk not available — claims will not be recorded on-chain."
+        )
+        return None
+
+# ── Session 1: ZoneChain + TemporalSig imports ────────────────────────────────
+from blockchain.zonechain import ZoneChainClient, get_zonechain_client, ChainEventType, ConfidenceTier
+from blockchain.temporalsig import get_temporalsig_client
+# ── End Session 1 imports ─────────────────────────────────────────────────────
 
 router = APIRouter(prefix="/api/v1/claims", tags=["claims"])
 
@@ -101,42 +135,14 @@ async def get_claim(claim_id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{claim_id}/audit-report")
-async def get_claim_audit_report(claim_id: str, db: AsyncSession = Depends(get_db)):
-    """Fetch or generate a Gemini audit report for a claim."""
+@router.post("/{claim_id}/audit")
+async def generate_claim_audit(claim_id: str, db: AsyncSession = Depends(get_db)):
     claim = await db.get(Claim, claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Check if audit report already exists
-    existing = await db.execute(
-        select(AuditLog)
-        .where(AuditLog.claim_id == claim_id)
-        .where(AuditLog.event_type == "gemini_audit")
-        .order_by(AuditLog.created_at.desc())
-    )
-    audit = existing.scalars().first()
+    report = await generate_audit_report(claim)
 
-    if audit:
-        return {
-            "claim_id": claim_id,
-            "content": audit.content,
-            "model_used": audit.model_used,
-            "generated_at": audit.created_at.isoformat(),
-        }
-
-    # Generate new audit report
-    report = await generate_audit_report({
-        "claim_id": claim_id,
-        "zone_id": claim.zone_id,
-        "confidence": claim.confidence,
-        "signals_fired": claim.exclusion_check.get("signals_fired", 3) if claim.exclusion_check else 3,
-        "exclusion_check": claim.exclusion_check,
-        "fraud_score": claim.fraud_score,
-        "signal_details": claim.exclusion_check.get("signal_details", {}) if claim.exclusion_check else {},
-    })
-
-    # Store the audit report
     audit_log = AuditLog(
         claim_id=claim_id,
         event_type="gemini_audit",
@@ -198,6 +204,40 @@ async def review_claim(claim_id: str, payload: ClaimReview, db: AsyncSession = D
     claim.reviewed_at = datetime.now(timezone.utc)
     claim.reviewed_by = payload.reviewed_by
 
+    # ── Session 2: Record fraud score on-chain BEFORE payout decision ─────────
+    # Fraud score must be immutably committed before approval.
+    # If chaincode auto-rejects due to fraud, reviewer action is overridden.
+    _claim_sdk = _get_claim_sdk()
+    chain_claim = None
+    if _claim_sdk and claim.fraud_score is not None:
+        try:
+            chain_claim = await _claim_sdk.record_fraud_score(
+                claim_id=claim_id,
+                fraud_score=float(claim.fraud_score),
+                recorded_by=payload.reviewed_by,
+            )
+            if chain_claim.get("fraud_auto_rejected"):
+                _claim_chaincode_logger.warning(
+                    f"Claim {claim_id}: FraudShield on-chain auto-reject. "
+                    f"Overriding reviewer action to 'reject'."
+                )
+                payload.action = "reject"
+                claim.status = "rejected"
+                claim.reviewed_at = datetime.now(timezone.utc)
+                claim.reviewed_by = "FraudShield-OnChain"
+                await db.commit()
+                return {
+                    "status": "rejected",
+                    "claim_id": claim_id,
+                    "reason": "FraudShield on-chain auto-reject",
+                    "fraud_score": claim.fraud_score,
+                    "chain_tx": chain_claim.get("tx_id"),
+                    "payout": None,
+                }
+        except Exception as exc:
+            _claim_chaincode_logger.error(f"Fraud score chaincode write failed for {claim_id}: {exc}")
+    # ── End Session 2 fraud score block ───────────────────────────────────────
+
     payout_result = None
     if payload.action == "approve":
         claim.actual_payout = claim.recommended_payout
@@ -220,6 +260,25 @@ async def review_claim(claim_id: str, payload: ClaimReview, db: AsyncSession = D
                 payout.settled_at = datetime.now(timezone.utc)
             db.add(payout)
 
+            # ── Session 2: Approve claim on-chain with UPI hash ───────────────
+            if _claim_sdk:
+                upi_ref = payout_result.get("upi_ref", "")
+                async def _approve_on_chain():
+                    try:
+                        await _claim_sdk.approve_claim(
+                            claim_id=claim_id,
+                            reviewed_by=payload.reviewed_by,
+                            upi_ref=upi_ref,  # SDK hashes before writing — no raw PII on chain
+                        )
+                        _claim_chaincode_logger.info(
+                            f"Claim {claim_id} approved on-chain. "
+                            f"UPI hash recorded (not raw ref)."
+                        )
+                    except Exception as exc:
+                        _claim_chaincode_logger.error(f"Claim approval chaincode write failed: {exc}")
+                asyncio.create_task(_approve_on_chain())
+            # ── End Session 2 approve on-chain ────────────────────────────────
+
     # Log the review
     audit = AuditLog(
         claim_id=claim_id,
@@ -229,6 +288,37 @@ async def review_claim(claim_id: str, payload: ClaimReview, db: AsyncSession = D
     )
     db.add(audit)
     await db.commit()
+
+    # ── Session 2: Reject claim on-chain ──────────────────────────────────────
+    if payload.action == "reject" and _claim_sdk:
+        async def _reject_on_chain():
+            try:
+                await _claim_sdk.reject_claim(
+                    claim_id=claim_id,
+                    reviewed_by=payload.reviewed_by,
+                    reason=getattr(payload, "rejection_reason", "Manual rejection by reviewer"),
+                )
+                _claim_chaincode_logger.info(f"Claim {claim_id} rejection recorded on-chain.")
+            except Exception as exc:
+                _claim_chaincode_logger.error(f"Claim rejection chaincode write failed: {exc}")
+        asyncio.create_task(_reject_on_chain())
+    # ── End Session 2 reject on-chain ─────────────────────────────────────────
+
+    # ── Session 1: ZoneChain — Record approval event (fire-and-forget) ───────
+    zonechain = get_zonechain_client()
+    asyncio.create_task(
+        zonechain.write_claim_event(
+            claim_id=claim_id,
+            rider_id=str(claim.rider_id),
+            policy_id=str(claim.policy_id),
+            zone_id=str(claim.zone_id),
+            event_type=ChainEventType.CLAIM_APPROVED if payload.action == "approve" else ChainEventType.CLAIM_REJECTED,
+            confidence_tier=ConfidenceTier(claim.confidence_tier.upper()) if hasattr(claim, "confidence_tier") and claim.confidence_tier else ConfidenceTier("LOW"),
+            composite_score=float(claim.composite_score or 0.0) if hasattr(claim, "composite_score") else 0.0,
+            payout_amount_inr=float(claim.payout_amount or 0.0) if payload.action == "approve" and hasattr(claim, "payout_amount") else 0.0,
+        )
+    )
+    # ── End Session 1 ZoneChain approval record ───────────────────────────────
 
     return {
         "status": claim.status,

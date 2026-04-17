@@ -193,7 +193,7 @@ export const verifyEShram = (riderId: string, eshramId: string) =>
 
 // FraudShield v2 — Federated Learning
 export const trainFederatedModel = () =>
-  fetchAPI<{ rounds_completed: number; convergence_history: number[]; per_client_stats: Record<string, unknown> }>(
+  fetchAPI<{ rounds_completed: number; convergence_history: number[]; per_client_stats: Record<string, { zone_ids: string[]; training_samples: number }> }>(
     '/api/v1/admin/fraudshield/train', { method: 'POST' }
   )
 export const getFederatedStatus = () =>

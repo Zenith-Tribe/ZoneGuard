@@ -163,7 +163,7 @@ class TestFederatedClient:
 
 class TestFederatedServer:
     def test_server_fedavg_aggregation(self):
-        """FedAvg with 2 clients of known weights should produce correct weighted average."""
+        """FedAvg with Sybil Resistance: caps each client at 20% of total samples."""
         server = FederatedServer(num_rounds=1)
 
         # Client A: 100 samples, all weights = 2.0, means = 10.0, stds = 3.0
@@ -184,15 +184,19 @@ class TestFederatedServer:
             sample_counts=[100, 300],
         )
 
-        # Expected: (2.0*100 + 4.0*300) / 400 = 1400/400 = 3.5
+        # Sybil cap = 20% of 400 = 80. Effective: [80, 80] (both capped).
+        # Equal effective weight → simple average: (2.0 + 4.0) / 2 = 3.0
         for feat in FederatedAnomalyModel.FEATURE_NAMES:
-            assert abs(aggregated["weights"][feat] - 3.5) < 1e-6
-        # Expected means: (10*100 + 20*300) / 400 = 7000/400 = 17.5
+            assert abs(aggregated["weights"][feat] - 3.0) < 1e-6
+        # Means: (10 + 20) / 2 = 15.0
         for feat in FederatedAnomalyModel.FEATURE_NAMES:
-            assert abs(aggregated["means"][feat] - 17.5) < 1e-6
-        # Expected stds: (3*100 + 5*300) / 400 = 1800/400 = 4.5
+            assert abs(aggregated["means"][feat] - 15.0) < 1e-6
+        # Stds: Pooled variance (Law of Total Variance)
+        # Var = [80*(9 + 25) + 80*(25 + 25)] / 160 = 6720/160 = 42.0
+        import math
+        expected_std = math.sqrt(42.0)
         for feat in FederatedAnomalyModel.FEATURE_NAMES:
-            assert abs(aggregated["stds"][feat] - 4.5) < 1e-6
+            assert abs(aggregated["stds"][feat] - expected_std) < 1e-4
 
     def test_server_full_training_converges(self):
         """Run 5 rounds; verify weight deltas decrease (convergence)."""

@@ -1,3 +1,12 @@
+# MERGED BY SESSION 7 — Patches from sessions: (none)
+# No session patched signal_fusion.py. File is unchanged from baseline.
+# [INTEGRATION WARNING] Session 2 PATCH W1 notes that mobility.py was empty.
+#   If signal_fusion.py's S2 path calls backend/integrations/mobility.py,
+#   update it to call the oracle aggregator (oracle/aggregator.py) instead.
+# [INTEGRATION WARNING] Session 6 (Pulse nowcasting) was not completed.
+#   nowcast_72h() from zone_twin.py is available but not yet wired to any
+#   signal fusion or API endpoint by Session 6.
+
 """
 Phase 3: QuadSignal Fusion Engine (Updated for Hyper-local Precision)
 

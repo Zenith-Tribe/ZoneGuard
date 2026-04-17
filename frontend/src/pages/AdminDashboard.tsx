@@ -28,7 +28,7 @@ export default function AdminDashboard() {
   const [claimsLoading, setClaimsLoading] = useState(true)
   const [auditReports, setAuditReports] = useState<Record<string, string>>({})
   const [flTraining, setFlTraining] = useState(false)
-  const [flResult, setFlResult] = useState<Record<string, unknown> | null>(null)
+  const [flResult, setFlResult] = useState<{ rounds_completed?: number; convergence_history?: number[]; per_client_stats?: Record<string, { zone_ids: string[]; training_samples: number }>; error?: string } | null>(null)
   const [temporalData, setTemporalData] = useState<Record<string, unknown> | null>(null)
   const [temporalLoading, setTemporalLoading] = useState(false)
 
@@ -419,7 +419,7 @@ export default function AdminDashboard() {
                 setFlTraining(true)
                 try {
                   const res = await trainFederatedModel()
-                  setFlResult(res as Record<string, unknown>)
+                  setFlResult(res)
                 } catch { setFlResult({ error: 'Training unavailable — backend not connected' }) }
                 setFlTraining(false)
               }}
@@ -441,18 +441,46 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-          {flResult && (
-            <div className="bg-slate-800 rounded-lg p-3">
-              <p className="text-emerald-400 text-xs font-semibold mb-1">
-                {(flResult as Record<string, unknown>).error ? '⚠ ' + String((flResult as Record<string, unknown>).error) : `✓ Training complete — ${(flResult as Record<string, unknown>).rounds_completed || 5} rounds`}
-              </p>
-              {!(flResult as Record<string, unknown>).error && (
-                <p className="text-slate-400 text-xs">
-                  Convergence: {(() => { const ch = (flResult as Record<string, unknown>).convergence_history as number[] | undefined; return ch?.length ? ch[ch.length - 1].toFixed(6) : 'N/A' })()} · Model gradients aggregated across 3 city clusters
+          {flResult && !flResult.error ? (
+            <div className="space-y-3">
+              {/* Training summary */}
+              <div className="bg-slate-800 rounded-lg p-3">
+                <p className="text-emerald-400 text-xs font-semibold mb-2">
+                  ✓ Training complete — {flResult.rounds_completed ?? 5} rounds
                 </p>
+                {/* Convergence history */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-slate-400 text-[10px] uppercase">Convergence per round:</span>
+                  <div className="flex gap-1">
+                    {(flResult.convergence_history ?? []).map((delta, i) => (
+                      <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${delta === 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                        R{i + 1}: {delta.toFixed(4)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-slate-500 text-[10px]">
+                  Model gradients aggregated via FedAvg across 3 city clusters. Raw rider data never centralized (DPDP Act 2023 compliant).
+                </p>
+              </div>
+              {/* Per-client stats */}
+              {flResult.per_client_stats && (
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(flResult.per_client_stats).map(([cityId, stats]) => (
+                    <div key={cityId} className="bg-slate-800 rounded-lg p-2.5 text-center">
+                      <p className="text-purple-300 text-[10px] font-semibold uppercase truncate">{cityId.replace(/_/g, ' ')}</p>
+                      <p className="text-white font-bold text-sm mt-0.5">{stats.training_samples} samples</p>
+                      <p className="text-slate-500 text-[10px]">{stats.zone_ids?.length ?? 0} zones</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          )}
+          ) : flResult?.error ? (
+            <div className="bg-slate-800 rounded-lg p-3">
+              <p className="text-amber-400 text-xs font-semibold">⚠ {flResult.error}</p>
+            </div>
+          ) : null}
         </div>
 
         {/* Temporal Clustering — Ring Detection */}
