@@ -71,13 +71,42 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting ZoneGuard API...")
 
-    # Initialize database tables (create if not exist)
+    # Initialize database tables (create if not exist) + seed if empty
     from db.database import engine, Base
-    # Import all models so Base.metadata knows about them
+    from sqlalchemy import text
     import models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Lightweight migration for columns added after initial schema
+        for stmt in [
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS eshram_id VARCHAR DEFAULT NULL",
+            "ALTER TABLE riders ADD COLUMN IF NOT EXISTS eshram_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE payouts ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0",
+        ]:
+            try:
+                await conn.execute(text(stmt))
+            except Exception:
+                pass
     logger.info("Database schema initialized")
+
+    # Seed initial data if DB is empty (non-blocking, skip if already seeded)
+    try:
+        from db.database import async_session
+        from sqlalchemy import select, func
+        async with async_session() as session:
+            result = await session.execute(select(func.count()).select_from(models.Zone))
+            count = result.scalar() or 0
+            if count == 0:
+                logger.info("Empty database detected — running seed...")
+                import subprocess, sys
+                subprocess.Popen(
+                    [sys.executable, "db/seed.py"],
+                    env={**__import__("os").environ},
+                )
+            else:
+                logger.info(f"Database already seeded ({count} zones)")
+    except Exception as e:
+        logger.warning(f"Seed check skipped: {e}")
 
     start_scheduler()
 

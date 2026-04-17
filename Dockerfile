@@ -14,5 +14,5 @@ COPY backend/ .
 ENV PORT=8000
 EXPOSE ${PORT}
 
-# Run seed script to create tables, then start server
-CMD sh -c "python db/seed.py && uvicorn main:app --host 0.0.0.0 --port ${PORT}"
+# DB schema created on app startup via lifespan hook in main.py
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
