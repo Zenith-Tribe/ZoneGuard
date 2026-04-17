@@ -376,7 +376,7 @@ export default function IdentityCard({
     );
   }
 
-  const { passport: p, share_url, qr_payload } = passport;
+  const { passport: p, qr_payload } = passport;
   const { did_document, credentials, disclosure_level, total_tenure_weeks, platforms_active } = p;
 
   // ── Main render ──────────────────────────────────────────────────────────

@@ -55,7 +55,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   blocked:  { label: 'Blocked',      color: 'text-orange-700',  bg: 'bg-orange-50 border-orange-200' },
 }
 
-export default function ProposalCard({ proposal, riderId, onVote, votedProposals }: Props) {
+export default function ProposalCard({ proposal, riderId: _riderId, onVote, votedProposals }: Props) {
   const [voting, setVoting] = useState(false)
   const [expanded, setExpanded] = useState(false)
 

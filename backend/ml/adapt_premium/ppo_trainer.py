@@ -67,7 +67,7 @@ class AdaptPremiumTrainer:
 
     def __init__(
         self,
-        output_dir: str = PPO_MODEL_PATH := os.getenv("PPO_MODEL_PATH", "/models/adapt_ppo"),
+        output_dir: str = os.getenv("PPO_MODEL_PATH", "/models/adapt_ppo"),        
         gan_model_dir: Optional[str] = None,
     ) -> None:
         self.output_dir = Path(output_dir)
