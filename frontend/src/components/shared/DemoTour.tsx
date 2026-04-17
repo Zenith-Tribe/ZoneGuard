@@ -54,7 +54,7 @@ export default function DemoTour() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('demo') === 'true') {
-      setActive(true)
+      setTimeout(() => setActive(true), 0);
     }
   }, [])
 
@@ -85,7 +85,7 @@ export default function DemoTour() {
           break
       }
 
-      setPosition({ top, left })
+      setTimeout(() => setPosition({ top, left }), 0);
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [active, step])

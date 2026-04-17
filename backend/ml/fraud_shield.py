@@ -1,7 +1,7 @@
 """
-FraudShield v1 — Isolation Forest anomaly detection on claim patterns.
+FraudShield Phase 3 — Behavioral & Multimodal Anomaly Detection.
 
-8 features:
+Features used for scoring:
 - claim_hour: hour of claim creation (0-23)
 - tenure_weeks: rider's tenure
 - zone_inactivity_pct: % riders inactive in zone
@@ -10,6 +10,8 @@ FraudShield v1 — Isolation Forest anomaly detection on claim patterns.
 - distance_from_centroid: how far rider is from zone center
 - s1_value: environmental signal value
 - days_since_policy_start: freshness of policy
+- vibration_entropy: mechanical engine signature vs GPS simulator (Phase 3)
+- acoustic_confidence: Gemini audio verification of rainfall (Phase 3)
 
 Thresholds:
 - score > 0.65 → "review" flag
@@ -33,14 +35,27 @@ def calculate_fraud_score(
     s1_value: float,
     days_since_policy_start: int,
     temporal_clustering_coefficient: float = 0.0,
+    vibration_entropy: float = 0.8,    # Phase 3: Individual Telemetry
+    acoustic_confidence: float = 0.0,  # Phase 3: Gemini Multimodal Verification
 ) -> dict:
     """
-    Rule-based fraud scoring that mimics Isolation Forest behavior.
-    In production, this would be a trained sklearn IsolationForest.
-    For the hackathon demo, we use transparent heuristics.
+    Rule-based fraud scoring with Phase 3 Behavioral and Multimodal logic.
+    Ensures score is bounded between 0.0 and 1.0.
     """
     anomaly_signals = []
     score = 0.0
+
+    # Phase 3: Individual Behavioral Analysis (Accelerometer/Vibration)
+    # Low vibration entropy while GPS is moving suggests a GPS simulator.
+    if vibration_entropy < 0.3:
+        score += 0.35
+        anomaly_signals.append("Anomaly: Low Vibration Entropy (Possible GPS Simulator)")
+    
+    # Phase 3: Acoustic Verification (Signal 4 Override)
+    # AI-confirmed rainfall reduces the overall fraud suspicion score.
+    if acoustic_confidence > 0.8:
+        score -= 0.2 
+        anomaly_signals.append("Acoustic Proof: Gemini verified rainfall audio")
 
     # Suspicious claim timing (late night / early morning)
     if claim_hour < 6 or claim_hour > 22:
@@ -91,7 +106,8 @@ def calculate_fraud_score(
             f"temporal clustering coefficient {temporal_clustering_coefficient:.2f} — possible coordinated claims"
         )
 
-    score = min(1.0, score)
+    # FIX: Ensure score is never negative and never exceeds 1.0
+    score = max(0.0, min(1.0, score))
 
     if score > 0.85:
         risk_level = "hold"
@@ -104,7 +120,7 @@ def calculate_fraud_score(
         "score": round(score, 3),
         "risk_level": risk_level,
         "anomaly_signals": anomaly_signals,
-        "model_version": "v1_heuristic",
+        "model_version": "v3_behavioral_heuristic",
         "features": {
             "claim_hour": claim_hour,
             "tenure_weeks": tenure_weeks,
@@ -114,12 +130,13 @@ def calculate_fraud_score(
             "distance_from_centroid_km": distance_from_centroid_km,
             "s1_value": s1_value,
             "days_since_policy_start": days_since_policy_start,
+            "vibration_entropy": vibration_entropy,    # Added for Phase 3
+            "acoustic_confidence": acoustic_confidence # Added for Phase 3
         },
     }
 
 
 # Module-level registry for trained federated model weights.
-# Populated by POST /admin/fraudshield/train; read by calculate_fraud_score_v2.
 _federated_global_weights: dict | None = None
 
 
@@ -139,10 +156,12 @@ def calculate_fraud_score_v2(
     s1_value: float,
     days_since_policy_start: int,
     temporal_clustering_coefficient: float = 0.0,
+    vibration_entropy: float = 0.8,
+    acoustic_confidence: float = 0.0,
 ) -> dict:
     """
-    FraudShield v2 — Federated Learning anomaly detection.
-    Uses the federated model when trained weights are available, falls back to v1 heuristic.
+    FraudShield v3 — Federated Learning anomaly detection.
+    Passes all Phase 3 features to the federated model.
     """
     if _federated_global_weights is not None:
         try:
@@ -159,14 +178,16 @@ def calculate_fraud_score_v2(
                 "distance_from_centroid_km": distance_from_centroid_km,
                 "s1_value": s1_value,
                 "days_since_policy_start": days_since_policy_start,
+                "vibration_entropy": vibration_entropy,
+                "acoustic_confidence": acoustic_confidence
             })
-            result["model_version"] = "v2_federated"
+            result["model_version"] = "v3_federated"
             result["federated_metadata"] = {"model_type": "FederatedAnomalyModel", "aggregation": "FedAvg"}
             return result
         except (ImportError, Exception) as e:
-            logger.warning(f"FraudShield v2 prediction failed ({e}), falling back to v1")
+            logger.warning(f"FraudShield v3 federated prediction failed ({e}), falling back to heuristic")
 
-    # Fallback to v1
+    # Fallback to logic-based heuristic
     result = calculate_fraud_score(
         claim_hour=claim_hour,
         tenure_weeks=tenure_weeks,
@@ -177,6 +198,8 @@ def calculate_fraud_score_v2(
         s1_value=s1_value,
         days_since_policy_start=days_since_policy_start,
         temporal_clustering_coefficient=temporal_clustering_coefficient,
+        vibration_entropy=vibration_entropy,
+        acoustic_confidence=acoustic_confidence
     )
-    result["model_version"] = "v1_heuristic_fallback"
+    result["model_version"] = "v3_heuristic_fallback"
     return result

@@ -44,7 +44,7 @@ export default function LandingPage() {
       localStorage.setItem('zoneguard_user', data.name)
       setShowLogin(false)
       navigate(loginTarget === 'rider' ? '/rider' : '/admin')
-    } catch (err) {
+    } catch {
       // Auth might be disabled — navigate anyway
       setShowLogin(false)
       navigate(loginTarget === 'rider' ? '/rider' : '/admin')

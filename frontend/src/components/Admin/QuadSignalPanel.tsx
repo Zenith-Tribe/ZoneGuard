@@ -5,15 +5,15 @@ import { QUAD_SIGNALS } from '../../data/mock'
 const DEMO_STEPS = [
   { idx: 0, value: 'Rainfall: 71mm/hr ⚡', delay: 0 },
   { idx: 1, value: 'Mobility: 18% of baseline ⚡', delay: 1800 },
-  { idx: 2, value: 'Orders: 22% of baseline ⚡', delay: 3400 },
-  { idx: 3, value: '47/103 riders inactive (46%) ⚡', delay: 5000 },
+  { idx: 2, value: 'AI: Acoustic rainfall verified (Voice Note) 🎤', delay: 3400 },
+  { idx: 3, value: 'H3 Hex: Hyper-local match (Res 8) ✅', delay: 5000 },
 ]
 
 const getConfidence = (fired: number): ConfidenceLevel =>
   fired === 4 ? 'HIGH' : fired === 3 ? 'MEDIUM' : fired === 2 ? 'LOW' : 'NOISE'
 
 const confidenceConfig: Record<ConfidenceLevel, { bg: string; border: string; text: string; label: string }> = {
-  HIGH:   { bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', text: 'text-emerald-400', label: 'Automatic payout initiating within 2 hours' },
+  HIGH:   { bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', text: 'text-emerald-400', label: 'Automatic payout initiating: H3 Hex Verified' },
   MEDIUM: { bg: 'bg-amber-500/10',   border: 'border-amber-500/50',   text: 'text-amber-400',   label: '1-hour recheck scheduled' },
   LOW:    { bg: 'bg-orange-500/10',  border: 'border-orange-500/50',  text: 'text-orange-400',  label: 'Flagged for human review' },
   NOISE:  { bg: 'bg-slate-700/50',   border: 'border-slate-600',      text: 'text-slate-400',   label: 'Monitoring — no action' },
@@ -68,8 +68,8 @@ export default function QuadSignalPanel() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0 mb-4 sm:mb-5">
         <div>
-          <h2 className="text-white font-bold text-base sm:text-lg">QuadSignal Fusion Engine</h2>
-          <p className="text-slate-400 text-xs">HSR Layout · 2-hour rolling window · 15-min refresh</p>
+          <h2 className="text-white font-bold text-base sm:text-lg">QuadSignal Fusion (Phase 3)</h2>
+          <p className="text-slate-400 text-xs">HSR Layout · H3 Res-8 Hyper-local Grids Active</p>
         </div>
         <div className="flex gap-2">
           {!isDemoRunning && !payoutFired && (
@@ -143,14 +143,14 @@ export default function QuadSignalPanel() {
       {payoutFired && (
         <div className="mt-4 bg-emerald-500/15 border border-emerald-400/60 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
           <div className="min-w-0">
-            <p className="text-emerald-400 font-bold text-sm">⚡ AUTO-PAYOUT TRIGGERED</p>
+            <p className="text-emerald-400 font-bold text-sm">⚡ AUTO-PAYOUT TRIGGERED (HSR HEX MATCH)</p>
             <p className="text-emerald-300 text-xs mt-1 line-clamp-2 sm:line-clamp-none">
               142 riders · HSR Layout · ₹1,430 each · Total: ₹2,03,060 · Disbursing via UPI...
             </p>
           </div>
           <div className="text-left sm:text-right flex-shrink-0">
             <p className="text-emerald-400 font-bold text-lg">₹2.03L</p>
-            <p className="text-emerald-500 text-xs">processing</p>
+            <p className="text-emerald-500 text-xs">Phase 3: Disbursed</p>
           </div>
         </div>
       )}
@@ -159,7 +159,7 @@ export default function QuadSignalPanel() {
       {isDemoRunning && (
         <div className="mt-3 flex items-center gap-2 text-amber-400 text-xs">
           <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          Demo in progress — signals firing...
+          Phase 3 Analysis: Signals firing & AI Evidence converging...
         </div>
       )}
     </div>

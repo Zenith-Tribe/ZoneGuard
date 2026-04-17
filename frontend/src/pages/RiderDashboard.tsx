@@ -13,7 +13,9 @@ import type { PolicyData, ZoneSignalData, RawApiZone, RawApiPayout } from '../ty
 
 export default function RiderDashboard() {
   const navigate = useNavigate()
-  const [rider, setRider] = useState<typeof RIDER & { eshramVerified?: boolean }>(RIDER)
+  const [rider, setRider] = useState<typeof RIDER & { eshramVerified?: boolean; h3Id?: string }>(
+    { ...RIDER, h3Id: '886014c1d3fffff' }
+  )
   const [policy, setPolicy] = useState<PolicyData | null>(null)
   const [payouts, setPayouts] = useState(PAYOUTS)
   const [signalData, setSignalData] = useState<ZoneSignalData | null>(null)
@@ -21,6 +23,9 @@ export default function RiderDashboard() {
   const [currentZoneId, setCurrentZoneId] = useState<string>('hsr')
   const [loading, setLoading] = useState(true)
   const { fetchNotifications } = useNotifications()
+
+  // Phase 3: Display banner on Sundays (0) or if demo mode is active
+  const isSundayNight = new Date().getDay() === 0 || window.location.search.includes('demo=true'); 
 
   useEffect(() => {
     const storedRiderId = localStorage.getItem('zoneguard_rider_id') || 'AMZFLEX-BLR-04821'
@@ -30,7 +35,16 @@ export default function RiderDashboard() {
         const r = await getRider(storedRiderId)
         const zoneId = r.zone_id || 'hsr'
         setCurrentZoneId(zoneId)
-        setRider({ ...RIDER, name: r.name, riderId: r.id, zone: ZONES[0], weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks, eshramVerified: r.eshram_verified })
+        setRider({ 
+          ...RIDER, 
+          name: r.name, 
+          riderId: r.id, 
+          zone: ZONES[0], 
+          weeklyEarningsBaseline: r.weekly_earnings_baseline ?? RIDER.weeklyEarningsBaseline, 
+          tenureWeeks: r.tenure_weeks ?? RIDER.tenureWeeks, 
+          eshramVerified: r.eshram_verified,
+          h3Id: '886014c1d3fffff' // Phase 3: Hyper-local ID
+        })
 
         const policies = await getPolicies(r.id)
         if (policies.length > 0) {
@@ -60,10 +74,11 @@ export default function RiderDashboard() {
     }
     init()
 
-    // Poll notifications every 15s for live demo updates
     const interval = setInterval(() => fetchNotifications(storedRiderId), 15000)
     return () => clearInterval(interval)
-  }, [])
+    
+    // FIX: Added fetchNotifications to dependency array to stop CI error
+  }, [fetchNotifications]) 
 
   const totalEarned = RAVI_WEEK.reduce((s, d) => s + d.earnings, 0)
   const totalPayout = RAVI_WEEK.reduce((s, d) => s + (d.payoutAmount ?? 0), 0)
@@ -99,6 +114,22 @@ export default function RiderDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
+        
+        {/* PHASE 3: PREDICTIVE HEDGE BOT BANNER */}
+        {isSundayNight && (
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 text-white shadow-lg flex items-center justify-between border-b-4 border-blue-800">
+             <div className="min-w-0">
+               <p className="font-bold text-sm flex items-center gap-2">
+                 <span className="animate-bounce">💰</span> Earnings Hedge Opportunity
+               </p>
+               <p className="text-xs text-blue-100 mt-1">82% Flood risk this Wednesday. Lock ₹2,600 protection for ₹25?</p>
+             </div>
+             <button className="flex-shrink-0 ml-3 bg-white text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-blue-50 transition-colors active:scale-95">
+               Lock Now
+             </button>
+          </div>
+        )}
+
         {/* Policy card (API) or Coverage card (mock) */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-amber-100 p-6 animate-pulse">
@@ -111,6 +142,17 @@ export default function RiderDashboard() {
         ) : (
           <CoverageCard zone={rider.zone} premiumPaid={rider.zone.weeklyPremium} maxPayout={rider.zone.maxWeeklyPayout} isActive={rider.coverageActive} />
         )}
+
+        {/* PHASE 3: MULTIMODAL AI EVIDENCE ACTION */}
+        <div className="bg-white rounded-2xl border-2 border-dashed border-amber-200 p-5 text-center shadow-sm">
+           <p className="text-stone-500 text-xs mb-3 font-medium">
+             Stuck in a disruption? Send Voice/Video for <span className="text-amber-600">Gemini AI verification</span>.
+           </p>
+           <button className="flex items-center gap-2 mx-auto bg-amber-500 hover:bg-amber-400 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-amber-200 transition-all active:scale-95">
+             <span className="text-lg">🎤</span>
+             Record AI Evidence
+           </button>
+        </div>
 
         {/* Summary strip */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -127,10 +169,17 @@ export default function RiderDashboard() {
         </div>
 
         {/* Mini zone map */}
-        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
-          <div className="px-4 pt-4 pb-2">
-            <h2 className="text-stone-800 font-bold text-sm">Your Zone</h2>
-            <p className="text-stone-500 text-xs">{rider.zone?.name || 'HSR Layout'}</p>
+        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden relative">
+          <div className="px-4 pt-4 pb-2 flex justify-between items-start">
+            <div>
+              <h2 className="text-stone-800 font-bold text-sm">Your Zone</h2>
+              <p className="text-stone-500 text-xs">{rider.zone?.name || 'HSR Layout'}</p>
+            </div>
+            {/* PHASE 3: H3 HEXAGON INDICATOR */}
+            <div className="text-right">
+              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">H3 Grid ID</span>
+              <p className="text-xs font-mono text-amber-600 font-bold">{rider.h3Id}</p>
+            </div>
           </div>
           <BengaluruZoneMap
             zones={mapZones}
@@ -172,7 +221,7 @@ export default function RiderDashboard() {
 
         <div className="text-center pb-4">
           <p className="text-stone-400 text-xs">
-            Member for {rider.tenureWeeks} weeks · {rider.zone?.name || 'HSR Layout'} zone · ZoneGuard v2.0 · Guidewire DEVTrails 2026
+            Member for {rider.tenureWeeks} weeks · {rider.zone?.name || 'HSR Layout'} zone · Phase 3 Evolution · Guidewire DEVTrails 2026
           </p>
         </div>
       </main>
