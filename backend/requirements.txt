@@ -23,4 +23,3 @@ pytest-asyncio>=0.24.0
 pytest-cov>=5.0.0
 h3==4.1.0
 python-multipart==0.0.9
-h3==4.1.0
